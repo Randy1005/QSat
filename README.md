@@ -1,0 +1,2 @@
+# QSat
+Quick SAT solver
