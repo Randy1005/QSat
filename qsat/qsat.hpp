@@ -1,4 +1,5 @@
 #include <vector>
+#include <string>
 
 namespace qsat {
   
@@ -8,7 +9,6 @@ namespace qsat {
   public:
     Literal(Variable var, bool sign = false);
     
-  private:
     int literalId;
   };
 
@@ -16,8 +16,19 @@ namespace qsat {
   public:
     Clause(std::vector<Literal>& lits);
 
-  private:
     std::vector<Literal> literals;
+  };
+
+  class Solver {
+  public: 
+    Solver();
+    void ParseDimacs(const std::string& inputFileName);
+    void Dump(std::ostream& os) const;
+  
+  private:
+    void ReadClause(std::istringstream& in, std::vector<Literal>& lits);
+    bool AddClause(std::vector<Literal>& lits);
+    std::vector<Clause> clauses; 
   };
 
 
