@@ -32,10 +32,10 @@ void qsat::Solver::ParseDimacs(const std::string& inputFileName) {
   std::vector<Literal> literals;
   int numVariables = 0;
   int numClauses = 0;
-  
+
   while (std::getline(ifs, lineBuffer)) {
     std::istringstream iss(lineBuffer);
-    
+
     if (lineBuffer[0] == 'c') continue;
     else if (lineBuffer[0] == 'p') {
       // TODO: there's gotta be a better way to do it
@@ -49,15 +49,15 @@ void qsat::Solver::ParseDimacs(const std::string& inputFileName) {
       ReadClause(iss, literals);
       AddClause(literals);
     }
-    
-	} 
+
+  } 
 
 
 }
 
 void qsat::Solver::ReadClause(std::istringstream& iss, std::vector<Literal>& lits) { 
   int parsedLiteral, variable;
-  
+
   lits.clear();
   for (;;) {
     iss >> parsedLiteral;
