@@ -45,20 +45,20 @@ void qsat::Solver::ParseDimacs(const std::string& inputFileName) {
 
   std::vector<Literal> literals;
   // TODO: variable naming 
+  // counter uses size_t
   int numVariables = 0;
-  int numClauses = 0;
+  int numClauses = 0;    
 
   while (std::getline(ifs, lineBuffer)) {
     
-    if(line_buffer)
-
     std::istringstream iss(lineBuffer);
 
     if (lineBuffer[0] == 'c') continue;
     else if (lineBuffer[0] == 'p') {
       // TODO: there's gotta be a better way to do it
       std::string dummyStr;
-      iss >> dummyStr >> dummyStr >> numVariables >> numClauses;
+      is >> dummyStr >> dummyStr >> numVariables >> numClauses;
+      // TODO: I don't think this is invalid ...
       if (numVariables == 0 || numClauses == 0) {
         std::cerr << "Parsing error: Invalid number of variables or clauses" << std::endl;
       }
