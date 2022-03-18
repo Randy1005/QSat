@@ -1,4 +1,6 @@
 add_library(qsat qsat.cpp)
-target_include_directories(qsat PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 
-target_link_libraries(qsat PUBLIC utils)
+#target_compile_features(qsat INTERFACE cxx_std_17)
+set_property(TARGET qsat PROPERTY CXX_STANDARD 17)
+
+target_compile_options(qsat INTERFACE -Wall -Wextra -Wfatal-errors)

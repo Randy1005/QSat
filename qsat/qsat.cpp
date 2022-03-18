@@ -1,10 +1,12 @@
 #ifndef QSAT_HPP
 #define QSAT_HPP
+
 #include <iostream>
 #include <cmath>
 #include <fstream>
 #include <sstream>
-#include <qsat.hpp>
+#include "qsat.hpp"
+
 
 // Literal Class constructor
 qsat::Literal::Literal(Variable var, bool sign) :
@@ -14,26 +16,42 @@ qsat::Literal::Literal(Variable var, bool sign) :
 }
 
 // Clause Class constructor
-qsat::Clause::Clause(std::vector<Literal>& lits) :
+qsat::Clause::Clause(const std::vector<Literal>& lits) :
   literals(lits) 
 {
 
 }
 
-// Solver Class constructor
-qsat::Solver::Solver() {
-
-}
+//// Solver Class constructor
+//qsat::Solver::Solver() {
+//
+//}
 
 void qsat::Solver::ParseDimacs(const std::string& inputFileName) {
-  std::string lineBuffer;
+
+
+  // TODO: create an input file stream
   std::ifstream ifs(inputFileName, std::ifstream::in);
 
+  if(!ifs) {
+    std::cerr << "file " << inputFileName << " is invalid";
+    std::exit(EXIT_FAILURE);
+
+    // TODO: throw an std::runtime_error 
+  }
+
+  std::string lineBuffer;
+
+
   std::vector<Literal> literals;
+  // TODO: variable naming 
   int numVariables = 0;
   int numClauses = 0;
 
   while (std::getline(ifs, lineBuffer)) {
+    
+    if(line_buffer)
+
     std::istringstream iss(lineBuffer);
 
     if (lineBuffer[0] == 'c') continue;
