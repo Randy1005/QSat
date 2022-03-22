@@ -9,8 +9,8 @@
 
 
 // Literal Class constructor
-qsat::Literal::Literal(Variable var, bool sign) :
-  literalId(var + var + (int)sign)
+qsat::Literal::Literal(VariableType var, bool sign) :
+  id(var + var + (int)sign)
 {
 
 }
@@ -22,58 +22,54 @@ qsat::Clause::Clause(const std::vector<Literal>& lits) :
 
 }
 
-//// Solver Class constructor
+// we may implement something in the constructor in the future, we don't know yet
 //qsat::Solver::Solver() {
 //
 //}
 
-void qsat::Solver::ParseDimacs(const std::string& inputFileName) {
+void qsat::Solver::read_dimacs(const std::string& inputFileName) {
 
+  std::ifstream ifs;
+  ifs.exceptions(std::ifstream::badbit);
 
   // TODO: create an input file stream
-  std::ifstream ifs(inputFileName, std::ifstream::in);
+  // TODO: doe not throw file invalid exception
+  try {
+    ifs.open(inputFileName);
 
-  if(!ifs) {
-    std::cerr << "file " << inputFileName << " is invalid";
-    std::exit(EXIT_FAILURE);
+    std::string lineBuffer;
+    std::vector<Literal> literals;
+    // TODO: variable naming 
+    // counter uses size_t
+    size_t numVariables = 0;
+    size_t  numClauses = 0;    
 
-    // TODO: throw an std::runtime_error 
-  }
-
-  std::string lineBuffer;
-
-
-  std::vector<Literal> literals;
-  // TODO: variable naming 
-  // counter uses size_t
-  int numVariables = 0;
-  int numClauses = 0;    
-
-  while (std::getline(ifs, lineBuffer)) {
+    while (std::getline(ifs, lineBuffer)) {
     
-    std::istringstream iss(lineBuffer);
+      std::istringstream iss(lineBuffer);
 
-    if (lineBuffer[0] == 'c') continue;
-    else if (lineBuffer[0] == 'p') {
-      // TODO: there's gotta be a better way to do it
-      std::string dummyStr;
-      is >> dummyStr >> dummyStr >> numVariables >> numClauses;
-      // TODO: I don't think this is invalid ...
-      if (numVariables == 0 || numClauses == 0) {
-        std::cerr << "Parsing error: Invalid number of variables or clauses" << std::endl;
+      if (lineBuffer[0] == 'c') continue;
+      else if (lineBuffer[0] == 'p') {
+        std::string dummyStr;
+        iss >> dummyStr >> dummyStr >> numVariables >> numClauses;
+        // TODO: I don't think this is invalid ...
       }
-    }
-    else {
-      ReadClause(iss, literals);
-      AddClause(literals);
+      else {
+        _read_clause(iss, literals);
+        _add_clause(literals);
+      }
+
     }
 
-  } 
-
+  }
+  catch (const std::ios_base::failure& fail) {
+    throw std::runtime_error(fail.what());
+  }
+  
 
 }
 
-void qsat::Solver::ReadClause(std::istringstream& iss, std::vector<Literal>& lits) { 
+void qsat::Solver::_read_clause(std::istringstream& iss, std::vector<Literal>& lits) { 
   int parsedLiteral, variable;
 
   lits.clear();
@@ -90,29 +86,29 @@ void qsat::Solver::ReadClause(std::istringstream& iss, std::vector<Literal>& lit
  * but just pushes a clause into the solver for now
  * and always successful
  *
- * @param
- * @returns
+ * @param lits the literals to form a clause and add to the solver
+ * @returns true if successfully added a clause to the solver, otherwise false
  */
-bool qsat::Solver::AddClause(std::vector<Literal>& lits) {
-  clauses.push_back(Clause(lits));
+bool qsat::Solver::_add_clause(std::vector<Literal>& lits) {
+  _clauses.push_back(Clause(lits));
   return true;
 }
 
 
 /**
- * TODO: Write a summary for Dump, w/ example usages
+ * @brief dumps solver data structures through std::ostream (currently dumps stored literals)
+ *
+ * @param os the output stream target to dump to 
  */
-void qsat::Solver::Dump(std::ostream& os) const {
+void qsat::Solver::dump(std::ostream& os) const {
   os << "Dump Clauses:" << std::endl;
-  for (Clause clause : clauses) {
+  for (Clause clause : _clauses) {
     for (Literal lit : clause.literals) {
-      os << lit.literalId << " ";
+      os << lit.id << " ";
     }
     os << std::endl;
   }
 }
-
-
 
 
 #endif

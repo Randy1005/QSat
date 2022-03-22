@@ -12,8 +12,8 @@ int main(int argc, char* argv[]) {
 
   // TODO: function is alwasy little-case separated by _
   //       => parse_dimacs
-  solver.ParseDimacs(argv[1]);
+  solver.read_dimacs(argv[1]);
   
   // TODO: dump
-  solver.Dump(std::cout);
+  solver.dump(std::cout);
 }

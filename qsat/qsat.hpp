@@ -8,19 +8,18 @@
 namespace qsat {
 
 // TODO: typedef is C-style... use "using" instead for c++
-typedef int Variable;
-//using VariableType = int; (Type means it is an alias)
+using VariableType = int; 
 
 // class: Literal
 // TODO: if everything is public -> just use struct
 //       can we do structure Literal...?
 struct Literal {
 
-  Literal(Variable var, bool sign = false);
+  Literal(VariableType var, bool sign = false);
     
   // TODO: id
   // variable naming rule is the same as function => int id;
-  int literalId;
+  int id;
 };
 
 // TODO: struct is enough I think
@@ -32,27 +31,25 @@ struct Clause {
 };
 
 class Solver {
+public: 
+  // TODO: if you don't have anything (empty) => use default
+  Solver() = default;
 
-  public: 
-    
-    // TODO: if you don't have anything (empty) => use default
-    Solver() = default;
+  // TODO: change the naming rules
+  // use read_dimacs
+  void read_dimacs(const std::string& inputFileName);
 
-    // TODO: change the naming rules
-    // use read_dimacs
-    void ParseDimacs(const std::string& inputFileName);
+  // TODO:
+  // use dump
+  void dump(std::ostream& os) const;
 
-    // TODO:
-    // use dump
-    void Dump(std::ostream& os) const;
+private:
 
-  private:
-
-    // TODO: private should alwasy prefix at '_'
-    // _read_clause, _add_clause, _clauses
-    void ReadClause(std::istringstream& in, std::vector<Literal>& lits);
-    bool AddClause(std::vector<Literal>& lits);
-    std::vector<Clause> clauses; 
+  // TODO: private should alwasy prefix at '_'
+  // _read_clause, _add_clause, _clauses
+  void _read_clause(std::istringstream& in, std::vector<Literal>& lits);
+  bool _add_clause(std::vector<Literal>& lits);
+  std::vector<Clause> _clauses; 
 };
 
 
