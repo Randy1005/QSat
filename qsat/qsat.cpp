@@ -1,69 +1,90 @@
-#ifndef QSAT_HPP
-#define QSAT_HPP
-
 #include <iostream>
 #include <cmath>
 #include <fstream>
 #include <sstream>
 #include "qsat.hpp"
 
+namespace qsat {
 
-qsat::Literal::Literal(VariableType var, bool isSigned) :
+Literal::Literal(VariableType var, bool isSigned) :
   id(var + var + (int)isSigned)
 {
 
 }
 
-qsat::Clause::Clause(const std::vector<Literal>& lits) :
+Clause::Clause(const std::vector<Literal>& lits) :
   literals(lits) 
 {
 
 }
 
 // we may implement something in the constructor in the future, we don't know yet
-//qsat::Solver::Solver() {
+//Solver::Solver() {
 //
 //}
 
-void qsat::Solver::read_dimacs(const std::string& inputFileName) {
+void Solver::read_dimacs(const std::string& inputFileName) {
+
   std::ifstream ifs;
-  ifs.exceptions(std::ifstream::badbit);
 
-  // TODO: doe not throw file invalid exception
-  try {
-    ifs.open(inputFileName);
+  ifs.open(inputFileName);
 
-    std::string lineBuffer;
-    std::vector<Literal> literals;
-    // TODO: variable naming 
-    // counter uses size_t
-    size_t numVariables = 0;
-    size_t  numClauses = 0;    
+  if(!ifs) {
+    throw std::runtime_error("failed to open a file");
+  }
 
-    while (std::getline(ifs, lineBuffer)) {
-    
-      std::istringstream iss(lineBuffer);
+  int symbol = -1;
+  std::string buf;
+  std::vector<Literal> literals;
+  size_t num_variables = 0;
+  size_t num_clauses = 0;    
 
-      if (lineBuffer[0] == 'c') continue;
-      else if (lineBuffer[0] == 'p') {
-        std::string dummyStr;
-        iss >> dummyStr >> dummyStr >> numVariables >> numClauses;
-      }
-      else {
-        _read_clause(iss, literals);
-        _add_clause(literals);
-      }
+  // TODO: finish the code below
+  while(true) {
+    ifs >> buf;
 
+    if(ifs.eof()) {
+      break;
     }
 
+    if(buf == "c") {
+      std::getline(ifs, buf);
+      std::cout << "comment: " << buf << '\n';
+    }
+    else if(buf == "p") {
+      ifs >> buf >> num_variables >> num_clauses;
+      std::cout << "p " << num_variables << ' ' << num_clauses << '\n';
+    }
+    else {
+      symbol = std::stoi(buf);
+      std::cout << symbol << ' ';
+      while(symbol != 0) {
+        ifs >> symbol;
+        std::cout << symbol << ' ';
+      }
+      std::cout << '\n';
+    }
   }
-  catch (const std::ifstream::failure& fail) {
-    throw std::runtime_error(fail.what());
-  }
+
+  //while (std::getline(ifs, buf)) {
+  //
+  //  std::istringstream iss(buf);
+
+  //  if (buf[0] == 'c') continue;
+  //  else if (buf[0] == 'p') {
+  //    std::string dummyStr;
+  //    iss >> dummyStr >> dummyStr >> num_variables >> num_clauses;
+  //  }
+  //  else {
+  //    _read_clause(iss, literals);
+  //    _add_clause(literals);
+  //  }
+
+  //}
   
 }
 
-void qsat::Solver::_read_clause(std::istringstream& iss, std::vector<Literal>& lits) { 
+void Solver::_read_clause(std::istringstream& iss, std::vector<Literal>& lits) { 
   int parsedLiteral, variable;
 
   lits.clear();
@@ -83,7 +104,7 @@ void qsat::Solver::_read_clause(std::istringstream& iss, std::vector<Literal>& l
  * @param lits the literals to form a clause and add to the solver
  * @returns true if successfully added a clause to the solver, otherwise false
  */
-bool qsat::Solver::_add_clause(std::vector<Literal>& lits) {
+bool Solver::_add_clause(std::vector<Literal>& lits) {
   _clauses.push_back(Clause(lits));
   return true;
 }
@@ -94,7 +115,7 @@ bool qsat::Solver::_add_clause(std::vector<Literal>& lits) {
  *
  * @param os the output stream target to dump to 
  */
-void qsat::Solver::dump(std::ostream& os) const {
+void Solver::dump(std::ostream& os) const {
   os << "Dump Clauses:" << std::endl;
   for (Clause clause : _clauses) {
     for (Literal lit : clause.literals) {
@@ -104,7 +125,6 @@ void qsat::Solver::dump(std::ostream& os) const {
   }
 }
 
-
-#endif
+}  // end of namespace qsat ---------------------------------------------------
 
 

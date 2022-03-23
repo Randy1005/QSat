@@ -7,26 +7,30 @@
 
 namespace qsat {
 
-// TODO: typedef is C-style... use "using" instead for c++
 using VariableType = int; 
 
-// class: Literal
-// TODO: if everything is public -> just use struct
-//       can we do structure Literal...?
+/**
+@struct Literal
+
+@brief struct to create a literal
+
+A leteral is created from a given integer variable based on the following
+encoding method:
+
+l  = 2*v
+l' = 2*v+1
+*/
 struct Literal {
 
   Literal(VariableType var, bool isSigned = false);
 
   // TODO: id
-  // variable naming rule is the same as function => int id;
   int id;
 };
 
-
-
-// TODO: struct is enough I think
+// TODO: document it
+// struct: Clause
 struct Clause {
-  // TODO: const std::vector<Literal>& is better
   Clause(const std::vector<Literal>& lits);
 
   std::vector<Literal> literals;
@@ -34,23 +38,23 @@ struct Clause {
 
 class Solver {
 public: 
-  // TODO: if you don't have anything (empty) => use default
+
+  // TODO: may change to include something in the future
   Solver() = default;
 
-  // TODO: change the naming rules
-  // use read_dimacs
   void read_dimacs(const std::string& inputFileName);
-
-  // TODO:
-  // use dump
   void dump(std::ostream& os) const;
+
+  // TODO: implement a solve function
+ 
+   // TODO: finish below
+  const std::vector<Clause>& clauses() const; 
 
 private:
 
-  // TODO: private should alwasy prefix at '_'
-  // _read_clause, _add_clause, _clauses
   void _read_clause(std::istringstream& in, std::vector<Literal>& lits);
   bool _add_clause(std::vector<Literal>& lits);
+
   std::vector<Clause> _clauses; 
 };
 
