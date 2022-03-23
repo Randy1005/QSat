@@ -8,14 +8,12 @@
 #include "qsat.hpp"
 
 
-// Literal Class constructor
-qsat::Literal::Literal(VariableType var, bool sign) :
-  id(var + var + (int)sign)
+qsat::Literal::Literal(VariableType var, bool isSigned) :
+  id(var + var + (int)isSigned)
 {
 
 }
 
-// Clause Class constructor
 qsat::Clause::Clause(const std::vector<Literal>& lits) :
   literals(lits) 
 {
@@ -28,11 +26,9 @@ qsat::Clause::Clause(const std::vector<Literal>& lits) :
 //}
 
 void qsat::Solver::read_dimacs(const std::string& inputFileName) {
-
   std::ifstream ifs;
   ifs.exceptions(std::ifstream::badbit);
 
-  // TODO: create an input file stream
   // TODO: doe not throw file invalid exception
   try {
     ifs.open(inputFileName);
@@ -52,7 +48,6 @@ void qsat::Solver::read_dimacs(const std::string& inputFileName) {
       else if (lineBuffer[0] == 'p') {
         std::string dummyStr;
         iss >> dummyStr >> dummyStr >> numVariables >> numClauses;
-        // TODO: I don't think this is invalid ...
       }
       else {
         _read_clause(iss, literals);
@@ -62,11 +57,10 @@ void qsat::Solver::read_dimacs(const std::string& inputFileName) {
     }
 
   }
-  catch (const std::ios_base::failure& fail) {
+  catch (const std::ifstream::failure& fail) {
     throw std::runtime_error(fail.what());
   }
   
-
 }
 
 void qsat::Solver::_read_clause(std::istringstream& iss, std::vector<Literal>& lits) { 
@@ -77,12 +71,12 @@ void qsat::Solver::_read_clause(std::istringstream& iss, std::vector<Literal>& l
     iss >> parsedLiteral;
     if (parsedLiteral == 0) break;
     variable = abs(parsedLiteral) - 1;
-    lits.push_back((parsedLiteral > 0) ? Literal(variable, true) : Literal(variable, false));
+    lits.push_back((parsedLiteral > 0) ? Literal(variable, false) : Literal(variable, true));
   }
 }
 
 /**
- * Should do some preprocessing at this point
+ * @brief should do some preprocessing at this point
  * but just pushes a clause into the solver for now
  * and always successful
  *

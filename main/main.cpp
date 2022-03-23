@@ -14,6 +14,7 @@ int main(int argc, char* argv[]) {
   //       => parse_dimacs
   solver.read_dimacs(argv[1]);
   
-  // TODO: dump
   solver.dump(std::cout);
+
+  return 0;
 }

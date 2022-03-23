@@ -15,12 +15,14 @@ using VariableType = int;
 //       can we do structure Literal...?
 struct Literal {
 
-  Literal(VariableType var, bool sign = false);
-    
+  Literal(VariableType var, bool isSigned = false);
+
   // TODO: id
   // variable naming rule is the same as function => int id;
   int id;
 };
+
+
 
 // TODO: struct is enough I think
 struct Clause {
