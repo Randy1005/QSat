@@ -72,6 +72,9 @@ public:
   // TODO: implement a solve function
   /**
   @brief solves the given cnf expression
+
+  Determine whether the given cnf is satisfiable or not.
+  If satisfiable, also construct a solution for the user
   */
   bool solve();
 
@@ -91,6 +94,7 @@ private:
   /**
   @brief pushes a vector of literals into the clauses vector
   @param lits the vector of literals to store as a clause
+  @returns true if the clause was pushed successfully, otherwise false
   */
   bool _add_clause(std::vector<Literal>& lits);
 
