@@ -24,9 +24,7 @@ Clause::Clause(const std::vector<Literal>& lits) :
 //}
 
 void Solver::read_dimacs(const std::string& inputFileName) {
-
   std::ifstream ifs;
-
   ifs.open(inputFileName);
 
   if(!ifs) {
@@ -39,82 +37,31 @@ void Solver::read_dimacs(const std::string& inputFileName) {
   size_t num_variables = 0;
   size_t num_clauses = 0;    
 
-  // TODO: finish the code below
-  while(true) {
+  while (true) {
     ifs >> buf;
+    if (ifs.eof()) break;
 
-    if(ifs.eof()) {
-      break;
-    }
-
-    if(buf == "c") {
-      std::getline(ifs, buf);
-      std::cout << "comment: " << buf << '\n';
-    }
-    else if(buf == "p") {
-      ifs >> buf >> num_variables >> num_clauses;
-      std::cout << "p " << num_variables << ' ' << num_clauses << '\n';
-    }
+    if (buf == "c") std::getline(ifs, buf);
+    else if (buf == "p") ifs >> buf >> num_variables >> num_clauses;
     else {
       symbol = std::stoi(buf);
-      std::cout << symbol << ' ';
-      while(symbol != 0) {
-        ifs >> symbol;
-        std::cout << symbol << ' ';
-      }
-      std::cout << '\n';
+      while (symbol != 0) { _read_clause(symbol, literals); ifs >> symbol; }
+      _add_clause(literals);
+      literals.clear();
     }
   }
-
-  //while (std::getline(ifs, buf)) {
-  //
-  //  std::istringstream iss(buf);
-
-  //  if (buf[0] == 'c') continue;
-  //  else if (buf[0] == 'p') {
-  //    std::string dummyStr;
-  //    iss >> dummyStr >> dummyStr >> num_variables >> num_clauses;
-  //  }
-  //  else {
-  //    _read_clause(iss, literals);
-  //    _add_clause(literals);
-  //  }
-
-  //}
-  
 }
 
-void Solver::_read_clause(std::istringstream& iss, std::vector<Literal>& lits) { 
-  int parsedLiteral, variable;
-
-  lits.clear();
-  for (;;) {
-    iss >> parsedLiteral;
-    if (parsedLiteral == 0) break;
-    variable = abs(parsedLiteral) - 1;
-    lits.push_back((parsedLiteral > 0) ? Literal(variable, false) : Literal(variable, true));
-  }
+void Solver::_read_clause(int symbol, std::vector<Literal>& lits) { 
+  int variable = (abs(symbol) - 1);
+  lits.push_back((symbol > 0) ? Literal(variable, false) : Literal(variable, true));
 }
 
-/**
- * @brief should do some preprocessing at this point
- * but just pushes a clause into the solver for now
- * and always successful
- *
- * @param lits the literals to form a clause and add to the solver
- * @returns true if successfully added a clause to the solver, otherwise false
- */
 bool Solver::_add_clause(std::vector<Literal>& lits) {
   _clauses.push_back(Clause(lits));
   return true;
 }
 
-
-/**
- * @brief dumps solver data structures through std::ostream (currently dumps stored literals)
- *
- * @param os the output stream target to dump to 
- */
 void Solver::dump(std::ostream& os) const {
   os << "Dump Clauses:" << std::endl;
   for (Clause clause : _clauses) {
@@ -123,6 +70,10 @@ void Solver::dump(std::ostream& os) const {
     }
     os << std::endl;
   }
+}
+
+const std::vector<Clause>& Solver::clauses() const {
+  return _clauses;
 }
 
 }  // end of namespace qsat ---------------------------------------------------
