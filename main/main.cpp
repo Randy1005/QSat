@@ -10,12 +10,11 @@ int main(int argc, char* argv[]) {
 
   qsat::Solver solver;
 
-
   solver.read_dimacs(argv[1]);
  
-  solver.solve();
-
-  solver.dump(std::cout);
+  if (solver.solve()) {
+    solver.dump(std::cout);
+  }
 
   return 0;
 }
