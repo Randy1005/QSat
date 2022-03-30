@@ -1,5 +1,3 @@
-// TODO: for each hpp you should always start with pragma once
-//       to make the compiler include/compile it only once
 #pragma once
 #include <vector>
 #include <algorithm>
@@ -34,21 +32,27 @@ struct Literal {
 struct Clause {
   
   Clause() = default;
+
+  Clause(Clause&&) = default;
+
   /**
-  @brief constructs a clause with given literals
+  @brief constructs a clause with given literals using copy semantics
   */
   Clause(const std::vector<Literal>& lits);
- 
+
+  // TODO
+  // you need a move constructor
+  Clause(std::vector<Literal>&& lits);
 
   /**
-  @brief move constructor
+  @brief default copy assignment operator
   */
-  Clause(const Clause&& rhs);
+  Clause& operator=(const Clause& rhs) = delete;
 
   /**
-  @brief copy assignment operator
+  @brief default move assignment operator
   */
-  Clause& operator=(const Clause& rhs);
+  Clause& operator=(Clause&& rhs) = default;
 
   std::vector<Literal> literals;
 };
@@ -59,7 +63,6 @@ struct Clause {
 */
 class Solver {
 public: 
-  // TODO: may change to include something in the future
   /**
   @brief constructs a solver object
   */
@@ -84,7 +87,6 @@ public:
   */
   void dump(std::ostream& os) const;
 
-  // TODO: implement a solve function
   /**
   @brief solves the given cnf expression
 
@@ -99,7 +101,12 @@ public:
   */
   const std::vector<Clause>& clauses() const; 
 
+  void add_clause(std::vector<Literal>&& lits);
+
+  void add_clause(const std::vector<Literal>& lits);
+
 private:
+
   /**
   @brief utility method that reads in a parsed symbol, encode into a literal and store it
   @param[in] in the parsed symbol
@@ -112,7 +119,7 @@ private:
   @param lits the vector of literals to store as a clause
   @returns true if the clause was pushed successfully, otherwise false
   */
-  bool _add_clause(const std::vector<Literal>& lits);
+
   
   bool _dpll(std::vector<Clause>& clauses, std::vector<int>& assignments);
 

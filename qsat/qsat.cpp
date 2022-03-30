@@ -12,23 +12,16 @@ Literal::Literal(VariableType var, bool isSigned) :
 }
 
 Clause::Clause(const std::vector<Literal>& lits) :
+  literals(lits) 
+{
+
+}
+
+Clause::Clause(std::vector<Literal>&& lits) :
   literals(std::move(lits)) 
 {
 
 }
-
-
-Clause::Clause(const Clause&& rhs) :
-  literals(std::move(rhs.literals))
-{
-
-}
-
-Clause& Clause::operator=(const Clause& rhs) {
-  literals = rhs.literals;
-  return *this;
-}
-
 
 // we may implement something in the constructor in the future, we don't know yet
 Solver::Solver() {
@@ -48,11 +41,12 @@ void Solver::read_dimacs(const std::string& inputFileName) {
   std::vector<Literal> literals;
 
   while (true) {
+
     ifs >> buf;
+
     if (ifs.eof()) {
       break;
     }
-
     if (buf == "c") {
       std::getline(ifs, buf);
     }
@@ -65,21 +59,25 @@ void Solver::read_dimacs(const std::string& inputFileName) {
         _read_clause(symbol, literals); 
         ifs >> symbol; 
       }
-
-      _add_clause(literals);
+      add_clause(std::move(literals));
       literals.clear();
     }
   }
 }
 
 void Solver::_read_clause(int symbol, std::vector<Literal>& lits) { 
-  int variable = (abs(symbol) - 1);
+  int variable = (std::abs(symbol) - 1);
   lits.push_back((symbol > 0) ? Literal(variable, false) : Literal(variable, true));
+
 }
 
-bool Solver::_add_clause(const std::vector<Literal>& lits) {
+// TODO: 
+void Solver::add_clause(std::vector<Literal>&& lits) {
+  _clauses.push_back(Clause(std::move(lits)));
+}
+
+void Solver::add_clause(const std::vector<Literal>& lits) {
   _clauses.push_back(Clause(lits));
-  return true;
 }
 
 bool Solver::_dpll(std::vector<Clause>& clauses, std::vector<int>& assignments) {
@@ -105,8 +103,10 @@ bool Solver::_dpll(std::vector<Clause>& clauses, std::vector<int>& assignments) 
   int new_lit_id = clauses[0].literals[0].id;
   int neg_new_lit_id = (new_lit_id % 2 == 0) ? new_lit_id + 1 : new_lit_id - 1;
 
-  // recurse into 2 branches, one branch picks the chosen literal, the other branch picks the negated chosen literal 
-  return _dpll(_determine_literal(clauses, assignments, new_lit_id), assignments) || _dpll(_determine_literal(clauses, assignments, neg_new_lit_id), assignments); 
+  // recurse into 2 branches, one branch picks the chosen literal, 
+  // the other branch picks the negated chosen literal 
+  return _dpll(_determine_literal(clauses, assignments, new_lit_id), assignments) || 
+         _dpll(_determine_literal(clauses, assignments, neg_new_lit_id), assignments); 
 
 }
   
@@ -132,11 +132,11 @@ bool Solver::_has_unit_clause(std::vector<Clause>& clauses, size_t& unitClauseIn
       return true;
     }
   }
-
   return false;
 }
 
-std::vector<Clause>& Solver:: _determine_literal(std::vector<Clause>& clauses, std::vector<int>& assignments, int new_lit_id) {
+// TODO: no need to return a reference if it is a private member
+std::vector<Clause>& Solver::_determine_literal(std::vector<Clause>& clauses, std::vector<int>& assignments, int new_lit_id) {
   // assign value to this unassigned literal
   assignments.push_back(new_lit_id % 2 == 0 ? (new_lit_id / 2) + 1 : ((new_lit_id + 1) / 2) * (-1));
   int neg_new_lit_id = new_lit_id % 2 == 0 ? new_lit_id + 1 : new_lit_id - 1;
@@ -145,19 +145,26 @@ std::vector<Clause>& Solver:: _determine_literal(std::vector<Clause>& clauses, s
   // (it evaluates to false, we still need to determine other literals in this clause)
   // 1. remove all clauses that contains this literal (it evaluates to true, don't care anymore)
   for (size_t i = 0; i < clauses.size(); i++) {
-
-    std::vector<Literal>::iterator neg_lit_itr = std::find_if(clauses[i].literals.begin(), clauses[i].literals.end(), [&](const Literal& lit) {
-          return lit.id == neg_new_lit_id;
-        });
+    
+    // TODO: use auto
+    auto neg_lit_itr = std::find_if(
+      clauses[i].literals.begin(), clauses[i].literals.end(), 
+      [&](const Literal& lit) {
+        return lit.id == neg_new_lit_id;
+      }
+    );
 
     // found case 1
     if (neg_lit_itr != clauses[i].literals.end()) {
       clauses.erase(clauses.begin() + i);
     }
     
-    std::vector<Literal>::iterator lit_itr = std::find_if(clauses[i].literals.begin(), clauses[i].literals.end(), [&](const Literal& lit) {
-          return lit.id == new_lit_id;
-        }); 
+    auto lit_itr = std::find_if(
+      clauses[i].literals.begin(), clauses[i].literals.end(), 
+      [&](const Literal& lit) {
+        return lit.id == new_lit_id;
+      }
+    ); 
    
     // found case 2
     if (lit_itr != clauses[i].literals.end()) {
@@ -170,8 +177,9 @@ std::vector<Clause>& Solver:: _determine_literal(std::vector<Clause>& clauses, s
 
 void Solver::dump(std::ostream& os) const {
   os << "Dump Clauses:\n";
-  for (const Clause& clause : _clauses) {
-    for (const Literal& lit : clause.literals) {
+  // TODO
+  for (const auto& clause : _clauses) {
+    for (const auto& lit : clause.literals) {
       os << lit.id << " ";
     }
     os << "\n";
@@ -200,5 +208,12 @@ const std::vector<Clause>& Solver::clauses() const {
 }
 
 }  // end of namespace qsat ---------------------------------------------------
+
+
+
+
+
+
+
 
 

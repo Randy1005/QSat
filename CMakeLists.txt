@@ -8,9 +8,24 @@ message("PROJECT_SOURCE_DIR:" ${PROJECT_SOURCE_DIR})
 # Turn on the verbose
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
+# Library-specific variable
+set(QSAT_3RD_PARTY_DIR ${PROJECT_SOURCE_DIR}/3rd-party)
+
+# -----------------------------------------------------------------------------
+# must-have package include
+# -----------------------------------------------------------------------------
+
+# Enable test
+include(CTest)
+
+# -----------------------------------------------------------------------------
+# include sub cmake list
+# -----------------------------------------------------------------------------
+
 # add sub directories
 add_subdirectory(qsat)
 add_subdirectory(main)
+add_subdirectory(unittests)
 
 
 

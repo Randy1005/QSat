@@ -16,5 +16,13 @@ int main(int argc, char* argv[]) {
     solver.dump(std::cout);
   }
 
+  solver.solve();
+
+  solver.dump(std::cout);
+  
+  solver.solve();
+  
+  solver.dump(std::cout);
+
   return 0;
 }
