@@ -2,6 +2,7 @@
 //       to make the compiler include/compile it only once
 #pragma once
 #include <vector>
+#include <algorithm>
 #include <string>
 
 namespace qsat {
@@ -31,10 +32,24 @@ struct Literal {
 @brief struct to create a clause
 */
 struct Clause {
+  
+  Clause() = default;
   /**
   @brief constructs a clause with given literals
   */
   Clause(const std::vector<Literal>& lits);
+ 
+
+  /**
+  @brief move constructor
+  */
+  Clause(const Clause&& rhs);
+
+  /**
+  @brief copy assignment operator
+  */
+  Clause& operator=(const Clause& rhs);
+
   std::vector<Literal> literals;
 };
 
@@ -48,7 +63,7 @@ public:
   /**
   @brief constructs a solver object
   */
-  Solver() = default;
+  Solver();
 
   /**
   @brief reads in dimacs cnf file, and store the literals and clauses
@@ -75,6 +90,7 @@ public:
 
   Determine whether the given cnf is satisfiable or not.
   If satisfiable, also construct a solution for the user
+  @returns true if the input cnf is satisfiable, otherwise return false
   */
   bool solve();
 
@@ -96,9 +112,20 @@ private:
   @param lits the vector of literals to store as a clause
   @returns true if the clause was pushed successfully, otherwise false
   */
-  bool _add_clause(std::vector<Literal>& lits);
+  bool _add_clause(const std::vector<Literal>& lits);
+  
+  bool _dpll(std::vector<Clause>& clauses, std::vector<int>& assignments);
+
+  void _unit_propagate(std::vector<Clause>& clauses, std::vector<int>& assignments);
+
+  bool _has_unit_clause(std::vector<Clause>& clauses, size_t& unitClauseIndex);
+
+  std::vector<Clause>& _determine_literal(std::vector<Clause>& clauses, std::vector<int>& assignments, int new_lit_id);
 
   std::vector<Clause> _clauses; 
+  std::vector<int> _assignments;
+  size_t _num_variables;
+  size_t _num_clauses;
 };
 
 
