@@ -10,9 +10,15 @@ int main(int argc, char* argv[]) {
 
   qsat::Solver solver;
 
-  // TODO: function is alwasy little-case separated by _
-  //       => parse_dimacs
   solver.read_dimacs(argv[1]);
+  
+  solver.dump(std::cout);
+
+  solver.solve();
+
+  solver.dump(std::cout);
+  
+  solver.solve();
   
   solver.dump(std::cout);
 

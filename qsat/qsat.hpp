@@ -1,5 +1,3 @@
-// TODO: for each hpp you should always start with pragma once
-//       to make the compiler include/compile it only once
 #pragma once
 #include <vector>
 #include <string>
@@ -32,9 +30,14 @@ struct Literal {
 */
 struct Clause {
   /**
-  @brief constructs a clause with given literals
+  @brief constructs a clause with given literals using copy semantics
   */
   Clause(const std::vector<Literal>& lits);
+
+  // TODO: constructs a cluase with the given lieterals using move semantics
+  Clause(std::vector<Literal>&& lits);
+
+
   std::vector<Literal> literals;
 };
 
@@ -44,7 +47,6 @@ struct Clause {
 */
 class Solver {
 public: 
-  // TODO: may change to include something in the future
   /**
   @brief constructs a solver object
   */
@@ -69,7 +71,6 @@ public:
   */
   void dump(std::ostream& os) const;
 
-  // TODO: implement a solve function
   /**
   @brief solves the given cnf expression
 
@@ -84,6 +85,7 @@ public:
   const std::vector<Clause>& clauses() const; 
 
 private:
+
   /**
   @brief utility method that reads in a parsed symbol, encode into a literal and store it
   @param[in] in the parsed symbol
