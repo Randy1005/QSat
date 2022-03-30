@@ -11,7 +11,9 @@ int main(int argc, char* argv[]) {
   qsat::Solver solver;
 
   solver.read_dimacs(argv[1]);
-  
+ 
+  solver.solve();
+
   solver.dump(std::cout);
 
   solver.solve();

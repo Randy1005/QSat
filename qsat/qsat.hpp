@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <algorithm>
 #include <string>
 
 namespace qsat {
@@ -29,14 +30,29 @@ struct Literal {
 @brief struct to create a clause
 */
 struct Clause {
+  
+  Clause() = default;
+
+  Clause(Clause&&) = default;
+
   /**
   @brief constructs a clause with given literals using copy semantics
   */
   Clause(const std::vector<Literal>& lits);
 
-  // TODO: constructs a cluase with the given lieterals using move semantics
+  // TODO
+  // you need a move constructor
   Clause(std::vector<Literal>&& lits);
 
+  /**
+  @brief default copy assignment operator
+  */
+  Clause& operator=(const Clause& rhs) = delete;
+
+  /**
+  @brief default move assignment operator
+  */
+  Clause& operator=(Clause&& rhs) = default;
 
   std::vector<Literal> literals;
 };
@@ -50,7 +66,7 @@ public:
   /**
   @brief constructs a solver object
   */
-  Solver() = default;
+  Solver();
 
   /**
   @brief reads in dimacs cnf file, and store the literals and clauses
@@ -76,6 +92,7 @@ public:
 
   Determine whether the given cnf is satisfiable or not.
   If satisfiable, also construct a solution for the user
+  @returns true if the input cnf is satisfiable, otherwise return false
   */
   bool solve();
 
@@ -83,6 +100,10 @@ public:
   @brief a getter method for the stored clauses
   */
   const std::vector<Clause>& clauses() const; 
+
+  void add_clause(std::vector<Literal>&& lits);
+
+  void add_clause(const std::vector<Literal>& lits);
 
 private:
 
@@ -98,9 +119,20 @@ private:
   @param lits the vector of literals to store as a clause
   @returns true if the clause was pushed successfully, otherwise false
   */
-  bool _add_clause(std::vector<Literal>& lits);
+
+  
+  bool _dpll(std::vector<Clause>& clauses, std::vector<int>& assignments);
+
+  void _unit_propagate(std::vector<Clause>& clauses, std::vector<int>& assignments);
+
+  bool _has_unit_clause(std::vector<Clause>& clauses, size_t& unitClauseIndex);
+
+  std::vector<Clause>& _determine_literal(std::vector<Clause>& clauses, std::vector<int>& assignments, int new_lit_id);
 
   std::vector<Clause> _clauses; 
+  std::vector<int> _assignments;
+  size_t _num_variables;
+  size_t _num_clauses;
 };
 
 
