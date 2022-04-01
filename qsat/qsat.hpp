@@ -32,7 +32,7 @@ struct Literal {
 struct Clause {
   
   Clause() = default;
-
+  Clause(const Clause&) = default;
   Clause(Clause&&) = default;
 
   /**
@@ -40,8 +40,6 @@ struct Clause {
   */
   Clause(const std::vector<Literal>& lits);
 
-  // TODO
-  // you need a move constructor
   Clause(std::vector<Literal>&& lits);
 
   /**
@@ -100,9 +98,16 @@ public:
   @brief a getter method for the stored clauses
   */
   const std::vector<Clause>& clauses() const; 
-
+  
+  /**
+  @brief adds a clause given a vector of literals (using move semantics)
+  */
   void add_clause(std::vector<Literal>&& lits);
 
+
+  /**
+  @brief adds a clause given a vector of literals (using copy semantics)
+  */
   void add_clause(const std::vector<Literal>& lits);
 
 private:
@@ -114,20 +119,11 @@ private:
   */
   void _read_clause(int symbol, std::vector<Literal>& lits);
   
-  /**
-  @brief pushes a vector of literals into the clauses vector
-  @param lits the vector of literals to store as a clause
-  @returns true if the clause was pushed successfully, otherwise false
-  */
-
-  
-  bool _dpll(std::vector<Clause>& clauses, std::vector<int>& assignments);
-
-  void _unit_propagate(std::vector<Clause>& clauses, std::vector<int>& assignments);
-
+  bool _dpll(std::vector<Clause>& clauses);
+  void _unit_propagate(std::vector<Clause>& clauses);
   bool _has_unit_clause(std::vector<Clause>& clauses, size_t& unitClauseIndex);
 
-  std::vector<Clause>& _determine_literal(std::vector<Clause>& clauses, std::vector<int>& assignments, int new_lit_id);
+  void _determine_literal(std::vector<Clause>& clauses, int new_lit_id);
 
   std::vector<Clause> _clauses; 
   std::vector<int> _assignments;
