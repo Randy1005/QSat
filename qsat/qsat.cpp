@@ -88,7 +88,7 @@ bool Solver::_dpll(std::vector<Clause>& clauses) {
   
   // base case: if the cnf expression contains an empty clause
   // TODO: Is there a more efficient way to do this?
-  for (const Clause& c : clauses) {
+  for (const auto& c : clauses) {
     if (c.literals.empty()) {
       return false;
     }
@@ -101,27 +101,29 @@ bool Solver::_dpll(std::vector<Clause>& clauses) {
   // can apply variable reordering later
   int new_lit_id = clauses[0].literals[0].id;
   int neg_new_lit_id = (new_lit_id % 2 == 0) ? new_lit_id + 1 : new_lit_id - 1;
-  
-  std::vector<Clause> c_assigned_lit = clauses;
+ 
+  // I think I have to make a copy here? probably a design flaw
+  // in order to recurse with 2 different clauses
   std::vector<Clause> c_assigned_neg_lit = clauses;
 
-  _determine_literal(c_assigned_lit, new_lit_id);
+  _determine_literal(clauses, new_lit_id);
   _determine_literal(c_assigned_neg_lit, neg_new_lit_id);
 
   // recurse into 2 branches, one branch picks the chosen literal, 
   // the other branch picks the negated chosen literal 
-  return _dpll(c_assigned_lit) || _dpll(c_assigned_neg_lit); 
+  return _dpll(clauses) || _dpll(c_assigned_neg_lit);  
 }
   
 
 void Solver::_unit_propagate(std::vector<Clause>& clauses) { 
   size_t unit_clause_index;
   while (_has_unit_clause(clauses, unit_clause_index)) {
-    int lit_id = clauses[unit_clause_index].literals[0].id; 
-    _assignments.push_back(lit_id % 2 == 0 ? (lit_id / 2) + 1 : ((lit_id + 1) / 2) * (-1));
-    _determine_literal(clauses, lit_id);
+    int lit_id = clauses[unit_clause_index].literals[0].id;
+    
     // remove this clause
     clauses.erase(clauses.begin() + unit_clause_index);
+    _assignments.push_back(lit_id % 2 == 0 ? (lit_id / 2) + 1 : ((lit_id + 1) / 2) * (-1));
+    _determine_literal(clauses, lit_id);
   }
 
 }
@@ -184,11 +186,13 @@ void Solver::dump(std::ostream& os) const {
   os << _num_variables << " variables\n";
   os << _num_clauses << " clauses\n";
 
+  /*
   os << "Assignments:\n";
   for (size_t i = 0; i < _assignments.size(); i++) {
     os << _assignments[i] << " ";
   }
   os << "\n";
+  */
 }
 
 bool Solver::solve() {
