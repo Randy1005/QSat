@@ -118,11 +118,17 @@ private:
   */
   void _read_clause(int symbol, std::vector<Literal>& lits);
   
+  /*
   bool _dpll(std::vector<Clause>& clauses);
   void _unit_propagate(std::vector<Clause>& clauses);
   bool _has_unit_clause(std::vector<Clause>& clauses, size_t& unitClauseIndex);
-
   void _determine_literal(std::vector<Clause>& clauses, int new_lit_id);
+  */
+
+  bool _backtrack(int decision_depth, std::vector<int>& assignments);
+  bool _evaluate_clauses(std::vector<int>& assignments);
+  void _init();
+  void _print_assignments();
 
   std::vector<Clause> _clauses; 
   std::vector<int> _assignments;
