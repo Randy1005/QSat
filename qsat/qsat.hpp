@@ -5,7 +5,12 @@
 
 namespace qsat {
 
-using VariableType = int; 
+// TODO:
+enum class Assignment {
+  FALSE = 0,
+  TRUE  = 1,
+  UNDEFINED
+};
 
 /**
 @struct Literal
@@ -14,15 +19,29 @@ using VariableType = int;
 A literal is created from a given integer variable based on the following
 encoding method:
 
-l  = 2*v
-l' = 2*v+1
+v is positive => id = 2|v| - 2 => assignment id/2
+v is negative => id = 2|v| - 1 => assignment id/2
+
+var => id => assignment
+ 1  => 0  => 0/2 = 0
+-1  => 1  => 1/2 = 0
+ 2  => 2  => 2/2 = 1
+-2  => 3  => 3/2 = 1
+ 3  => 4  => 4/2 = 2
+-3  => 5  => 5/2 = 2
+...
 */
 struct Literal {
+
+  // TODO: friend class Clause
+
   /**
   @brief constructs a literal with a given variable
   */
-  Literal(VariableType var, bool isSigned = false);
-  int id;
+  Literal(int var);
+
+  // TODO: make this a private _id
+  size_t id;
 };
 
 /**
@@ -109,6 +128,19 @@ public:
   */
   void add_clause(const std::vector<Literal>& lits);
 
+  size_t num_clauses() const   { return _clauses.size(); }
+  size_t num_variables() const { return _assignments.size(); }
+
+  // TODO
+  // v is positive => id = 2|v| - 2 => assignment id/2
+  // v is negative => id = 2|v| - 1 => assignment id/2
+  //Assignment assignment_of(int variable) const {
+  //  return _assignments[variable > 0 ? variable - 1 : -variable - 1];
+  //}
+
+
+  void reset();
+
 private:
 
   /**
@@ -125,15 +157,14 @@ private:
   void _determine_literal(std::vector<Clause>& clauses, int new_lit_id);
   */
 
+  // TODO: std::vector<Assignment>& assignments
   bool _backtrack(int decision_depth, std::vector<int>& assignments);
-  bool _evaluate_clauses(std::vector<int>& assignments);
+  bool _evaluate_clauses(const std::vector<int>& assignments) ;
   void _init();
   void _print_assignments();
 
   std::vector<Clause> _clauses; 
   std::vector<int> _assignments;
-  size_t _num_variables;
-  size_t _num_clauses;
 };
 
 
