@@ -112,6 +112,9 @@ bool Solver::_backtrack(int decision_depth, std::vector<int>& assignments) {
 @brief this method checks if all clauses evaluate to true, if so return true
        if any one of the clauses evaluates to false, then return false
 */
+// ?? How do we add in constraint propagation?
+// It needs to maintain the state of clauses before propagation
+// so we can reset if we made a wrong decision
 bool Solver::_evaluate_clauses(std::vector<int>& assignments) {
   for (const auto& c : _clauses) {
     bool clause_is_sat = false;
