@@ -104,7 +104,6 @@ public:
   */
   void add_clause(std::vector<Literal>&& lits);
 
-
   /**
   @brief adds a clause given a vector of literals (using copy semantics)
   */
