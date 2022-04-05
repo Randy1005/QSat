@@ -5,7 +5,6 @@
 
 namespace qsat {
 
-// TODO:
 enum class Assignment {
   FALSE = 0,
   TRUE  = 1,
@@ -32,16 +31,18 @@ var => id => assignment
 ...
 */
 struct Literal {
+  public:
+    // TODO: friend class Clause
+    /**
+    @brief constructs a literal with a given variable
+    */
+    Literal(int var);
+  private:
+    // TODO: make this a private _id
+    size_t _id;
 
-  // TODO: friend class Clause
-
-  /**
-  @brief constructs a literal with a given variable
-  */
-  Literal(int var);
-
-  // TODO: make this a private _id
-  size_t id;
+  friend struct Clause;
+  friend class Solver;
 };
 
 /**
@@ -134,9 +135,9 @@ public:
   // TODO
   // v is positive => id = 2|v| - 2 => assignment id/2
   // v is negative => id = 2|v| - 1 => assignment id/2
-  //Assignment assignment_of(int variable) const {
-  //  return _assignments[variable > 0 ? variable - 1 : -variable - 1];
-  //}
+  Assignment assignment_of(int variable) const {
+    return _assignments[variable > 0 ? variable - 1 : -variable - 1];
+  }
 
 
   void reset();
@@ -158,13 +159,13 @@ private:
   */
 
   // TODO: std::vector<Assignment>& assignments
-  bool _backtrack(int decision_depth, std::vector<int>& assignments);
-  bool _evaluate_clauses(const std::vector<int>& assignments) ;
+  bool _backtrack(int decision_depth, std::vector<Assignment>& assignments);
+  bool _evaluate_clauses(const std::vector<Assignment>& assignments) ;
   void _init();
   void _print_assignments();
 
   std::vector<Clause> _clauses; 
-  std::vector<int> _assignments;
+  std::vector<Assignment> _assignments;
 };
 
 

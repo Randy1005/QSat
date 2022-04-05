@@ -55,7 +55,32 @@ TEST_CASE("CNF.1v.2c.unsat" * doctest::timeout(300)) {
   REQUIRE(solver.solve() == false);
 }
 
-// TODO: 
+// Unittest (a + b)(b + a')(a + b')(a' + b')
+TEST_CASE("CNF.2v.4c.unsat" * doctest::timeout(300)) {
+  qsat::Solver solver;
+  solver.add_clause({qsat::Literal(1), qsat::Literal(2)});
+  solver.add_clause({qsat::Literal(2), qsat::Literal(-1)});
+  solver.add_clause({qsat::Literal(1), qsat::Literal(-2)});
+  solver.add_clause({qsat::Literal(-1), qsat::Literal(-2)});
 
+  REQUIRE(solver.num_clauses() == 4);
+  REQUIRE(solver.num_variables() == 2);
+  REQUIRE(solver.solve() == false);
+}
+
+
+// Unittest (a + b')(a' + b)(a + b) => unique solution (a = True, b = True)
+TEST_CASE("CNF.2v.3c.sat.unique_solution" * doctest::timeout(300)) {
+  qsat::Solver solver;
+  solver.add_clause({qsat::Literal(1), qsat::Literal(-2)});
+  solver.add_clause({qsat::Literal(-1), qsat::Literal(2)});
+  solver.add_clause({qsat::Literal(1), qsat::Literal(2)});
+  
+  REQUIRE(solver.num_clauses() == 3);
+  REQUIRE(solver.num_variables() == 2);
+  REQUIRE(solver.solve() == true);
+  REQUIRE(solver.assignment_of(1) == qsat::Assignment::TRUE);
+  REQUIRE(solver.assignment_of(2) == qsat::Assignment::TRUE);
+}
 
 

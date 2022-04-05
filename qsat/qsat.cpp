@@ -6,10 +6,10 @@
 namespace qsat {
 
 Literal::Literal(int var) {
-  if(var == 0) {
+  if (var == 0) {
     throw std::runtime_error("variable cannot be zero");
   }
-  id = (var > 0) ? 2*var - 2 : 2 * -var - 1;
+ _id = (var > 0) ? 2 * var - 2 : 2 * -var - 1;
 }
 
 Clause::Clause(const std::vector<Literal>& lits) :
@@ -33,7 +33,7 @@ void Solver::read_dimacs(const std::string& inputFileName) {
   std::ifstream ifs;
   ifs.open(inputFileName);
 
-  if(!ifs) {
+  if (!ifs) {
     throw std::runtime_error("failed to open a file");
   }
 
@@ -71,37 +71,37 @@ void Solver::_read_clause(int variable, std::vector<Literal>& lits) {
 
 void Solver::add_clause(std::vector<Literal>&& lits) {
   
+  // resize the assignment vector to the current largest variable
   size_t max = 0;
 
-  for(const auto& l : lits) {
-    max = std::max(max, l.id / 2);
+  for (const auto& l : lits) {
+    max = std::max(max, l._id / 2);
   }
 
-  // TODO: study why it is max+1
-  if(max >= _assignments.size()) {
-    _assignments.resize(max+1);
+  if (max >= _assignments.size()) {
+    _assignments.resize(max + 1);
   }
 
   _clauses.push_back(Clause(std::move(lits)));
 }
 
 void Solver::add_clause(const std::vector<Literal>& lits) {
-  
+ 
+  // resize the assignment vector to the current largest variable
   size_t max = 0;
 
-  for(const auto& l : lits) {
-    max = std::max(max, l.id / 2);
+  for (const auto& l : lits) {
+    max = std::max(max, l._id / 2);
   }
 
-  // TODO: study why it is max+1
-  if(max >= _assignments.size()) {
-    _assignments.resize(max+1);
+  if (max >= _assignments.size()) {
+    _assignments.resize(max + 1);
   }
 
   _clauses.push_back(Clause(lits));
 }
 
-bool Solver::_backtrack(int decision_depth, std::vector<int>& assignments) {
+bool Solver::_backtrack(int decision_depth, std::vector<Assignment>& assignments) {
   // base case: we exceeded the maximum decision depth
   // and still didn't find satisfiable assignments
   if (decision_depth >= num_variables()) {
@@ -110,7 +110,7 @@ bool Solver::_backtrack(int decision_depth, std::vector<int>& assignments) {
   }
 
   for (int val = 0; val <= 1; val++) {
-    assignments[decision_depth] = val;
+    assignments[decision_depth] = static_cast<Assignment>(val);
     // _print_assignments();    
     // if all of the clauses evaluates to true, then we have a solution
     if (_evaluate_clauses(assignments)) {
@@ -123,7 +123,7 @@ bool Solver::_backtrack(int decision_depth, std::vector<int>& assignments) {
 
     // if backtrack returns failure, clear out the previous assignment
     // 0 -> assign false, 1 -> assign true, 2 -> unassigned
-    assignments[decision_depth] = 2;
+    assignments[decision_depth] = Assignment::UNDEFINED;
   }
 
   // searched the whole tree, and didn't find a solution
@@ -138,20 +138,21 @@ bool Solver::_backtrack(int decision_depth, std::vector<int>& assignments) {
 // ?? How do we add in constraint propagation?
 // It needs to maintain the state of clauses before propagation
 // so we can reset if we made a wrong decision
-bool Solver::_evaluate_clauses(const std::vector<int>& assignments) {
+bool Solver::_evaluate_clauses(const std::vector<Assignment>& assignments) {
   for (const auto& c : _clauses) {
     bool clause_is_sat = false;
     for (const auto& lit : c.literals) {
       // assignment[lit / 2] to get the corresponding variable's assignment
       // and xor with the rightmost bit of lit (lit & 1) 
       // (equals to checking if the lit is even)
-      // TODO: != Assignment::UNDEFINED
-      //          static_cast<int>(Assignment::UNDEFINED)
-      if (assignments[lit.id / 2] != 2 && assignments[lit.id / 2] ^ (lit.id & 1)) {
+      if (assignments[lit._id / 2] != Assignment::UNDEFINED && 
+          static_cast<int>(assignments[lit._id / 2]) ^ (lit._id & 1)) 
+      {
         clause_is_sat = true;
         break;
       }
     }
+
     if (!clause_is_sat) {
       return false;
     }
@@ -162,7 +163,7 @@ bool Solver::_evaluate_clauses(const std::vector<int>& assignments) {
 
 void Solver::_print_assignments() {
   for (size_t i = 0; i < _assignments.size(); i++) {
-    std::cout << _assignments[i] << " ";
+    std::cout << static_cast<int>(_assignments[i]) << " ";
   }
   std::cout << "\n";
 }
@@ -268,7 +269,7 @@ void Solver::dump(std::ostream& os) const {
   os << "Dump Clauses:\n";
   for (const auto& clause : _clauses) {
     for (const auto& lit : clause.literals) {
-      os << lit.id << " ";
+      os << lit._id << " ";
     }
     os << "\n";
   }
@@ -279,7 +280,7 @@ void Solver::dump(std::ostream& os) const {
 
   os << "Assignments:\n";
   for (size_t i = 0; i < _assignments.size(); i++) {
-    os << _assignments[i] << " ";
+    os << static_cast<int>(_assignments[i]) << " ";
   }
   os << "\n";
 }
@@ -287,7 +288,7 @@ void Solver::dump(std::ostream& os) const {
 void Solver::_init() {
   _assignments.resize(num_variables());
   for (size_t i = 0; i < num_variables(); i++) {
-    _assignments[i] = 2; // unassigned state
+    _assignments[i] = Assignment::UNDEFINED; // unassigned state
   }
 }
 
