@@ -70,7 +70,7 @@ TEST_CASE("CNF.2v.4c.unsat" * doctest::timeout(300)) {
 
 
 // Unittest (a + b')(a' + b)(a + b) => unique solution (a = True, b = True)
-TEST_CASE("CNF.2v.3c.sat.unique_solution" * doctest::timeout(300)) {
+TEST_CASE("CNF.2v.3c.sat.unique" * doctest::timeout(300)) {
   qsat::Solver solver;
   solver.add_clause({qsat::Literal(1), qsat::Literal(-2)});
   solver.add_clause({qsat::Literal(-1), qsat::Literal(2)});
