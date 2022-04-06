@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <string>
 
+
 namespace qsat {
 
 enum class Assignment {
