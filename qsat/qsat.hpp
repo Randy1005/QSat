@@ -31,19 +31,22 @@ var => id => assignment
 -3  => 5  => 5/2 = 2
 ...
 */
-struct Literal {
+class Literal {
+  
+  friend struct Clause;
+  friend class Solver;
+
   public:
     // TODO: friend class Clause
     /**
     @brief constructs a literal with a given variable
     */
     Literal(int var);
+
   private:
     // TODO: make this a private _id
     size_t _id;
 
-  friend struct Clause;
-  friend class Solver;
 };
 
 /**

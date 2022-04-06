@@ -102,7 +102,7 @@ TEST_CASE("CNF.2v.3c.sat.unique" * doctest::timeout(300)) {
   REQUIRE(solver.assignment_of(2) == qsat::Assignment::TRUE);
 }
 
-
+// TODO: unittest typically doesn't do file
 TEST_CASE("ReadCNF.20v.91c.sat.0" * doctest::timeout(300)) {
   qsat::Solver solver;
   solver.read_dimacs("../../dimacs_test_files/sat_v20_c91.cnf");
