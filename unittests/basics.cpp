@@ -32,6 +32,8 @@ TEST_CASE("CNF.1v.1c.sat" * doctest::timeout(300)) {
   qsat::Solver solver;
   solver.add_clause({a});
   REQUIRE(solver.solve() == true);
+  
+  // TODO: assignment_of(1) => TRUE
 }
 
 // Unittest (a + b')(a'+ b) 
@@ -43,6 +45,7 @@ TEST_CASE("CNF.2v.2c.sat" * doctest::timeout(300)) {
   REQUIRE(solver.num_variables() == 2);
   REQUIRE(solver.solve() == true);
 
+  // TODO: assignment_of(1) assignment_of(2) 
 }
 
 // Unittest (a)(a') 
@@ -53,6 +56,8 @@ TEST_CASE("CNF.1v.2c.unsat" * doctest::timeout(300)) {
   REQUIRE(solver.num_clauses() == 2);
   REQUIRE(solver.num_variables() == 1);
   REQUIRE(solver.solve() == false);
+  
+  // TODO: assignment_of(1) => UNDEFINED
 }
 
 // Unittest (a + b)(b + a')(a + b')(a' + b')
@@ -100,6 +105,20 @@ TEST_CASE("CNF.2v.3c.sat.unique" * doctest::timeout(300)) {
   REQUIRE(solver.solve() == true);
   REQUIRE(solver.assignment_of(1) == qsat::Assignment::TRUE);
   REQUIRE(solver.assignment_of(2) == qsat::Assignment::TRUE);
+
+
 }
+
+
+
+
+
+
+
+
+
+
+
+
 
 

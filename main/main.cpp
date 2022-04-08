@@ -23,6 +23,5 @@ int main(int argc, char* argv[]) {
             <<  elapsed_time.count() * 1000.0f
             << " ms\n";
 
-
   return 0;
 }
