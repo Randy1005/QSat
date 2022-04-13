@@ -1,12 +1,13 @@
 #pragma once
 #include <vector>
+#include <map>
 #include <algorithm>
 #include <string>
 
 
 namespace qsat {
 
-enum class Assignment {
+enum class Status {
   FALSE = 0,
   TRUE  = 1,
   UNDEFINED
@@ -136,10 +137,9 @@ public:
   size_t num_clauses() const   { return _clauses.size(); }
   size_t num_variables() const { return _assignments.size(); }
 
-  // TODO
   // v is positive => id = 2|v| - 2 => assignment id/2
   // v is negative => id = 2|v| - 1 => assignment id/2
-  Assignment assignment_of(int variable) const {
+  Status assignment_of(int variable) const {
     return _assignments[variable > 0 ? variable - 1 : -variable - 1];
   }
 
@@ -162,14 +162,23 @@ private:
   void _determine_literal(std::vector<Clause>& clauses, int new_lit_id);
   */
 
-  // TODO: std::vector<Assignment>& assignments
-  bool _backtrack(int decision_depth, std::vector<Assignment>& assignments);
-  bool _evaluate_clauses(const std::vector<Assignment>& assignments) ;
+  bool _backtrack(int decision_depth, std::vector<Status>& assignments);
+  bool _evaluate_clauses(const std::vector<Status>& assignments) ;
   void _init();
   void _print_assignments();
+  
 
   std::vector<Clause> _clauses; 
-  std::vector<Assignment> _assignments;
+  std::vector<Status> _assignments;
+
+  // mapping: assignments (variable) -> clauses' id
+  std::map<int, std::vector<int>> _var_to_clauses;
+
+  // counter for currently satisfied clauses
+  size_t _num_sat_clauses = 0;
+
+  // lookup for the status of each clause
+  std::vector<Status> _clauses_status;
 };
 
 

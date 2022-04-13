@@ -78,11 +78,18 @@ void Solver::add_clause(std::vector<Literal>&& lits) {
     max = std::max(max, l._id / 2);
   }
 
+  for (const auto& l : lits) {
+    // TODO: does this work?
+    _var_to_clauses[l._id / 2].push_back(_clauses.size());
+  }
+
+
   if (max >= _assignments.size()) {
     _assignments.resize(max + 1);
   }
 
   _clauses.push_back(Clause(std::move(lits)));
+
 }
 
 void Solver::add_clause(const std::vector<Literal>& lits) {
@@ -94,14 +101,20 @@ void Solver::add_clause(const std::vector<Literal>& lits) {
     max = std::max(max, l._id / 2);
   }
 
+  for (const auto& l : lits) {
+    // TODO: does this work?
+    _var_to_clauses[l._id / 2].push_back(_clauses.size());
+  }
+
   if (max >= _assignments.size()) {
     _assignments.resize(max + 1);
   }
 
   _clauses.push_back(Clause(lits));
+  
 }
 
-bool Solver::_backtrack(int decision_depth, std::vector<Assignment>& assignments) {
+bool Solver::_backtrack(int decision_depth, std::vector<Status>& assignments) {
   // base case: we exceeded the maximum decision depth
   // and still didn't find satisfiable assignments
   if (decision_depth >= num_variables()) {
@@ -110,7 +123,9 @@ bool Solver::_backtrack(int decision_depth, std::vector<Assignment>& assignments
   }
 
   for (int val = 0; val <= 1; val++) {
-    assignments[decision_depth] = static_cast<Assignment>(val);
+    assignments[decision_depth] = static_cast<Status>(val);
+    
+
     // _print_assignments();    
     // if all of the clauses evaluates to true, then we have a solution
     if (_evaluate_clauses(assignments)) {
@@ -123,7 +138,8 @@ bool Solver::_backtrack(int decision_depth, std::vector<Assignment>& assignments
 
     // if backtrack returns failure, clear out the previous assignment
     // 0 -> assign false, 1 -> assign true, 2 -> unassigned
-    assignments[decision_depth] = Assignment::UNDEFINED;
+    assignments[decision_depth] = Status::UNDEFINED;
+
   }
 
   // searched the whole tree, and didn't find a solution
@@ -138,14 +154,15 @@ bool Solver::_backtrack(int decision_depth, std::vector<Assignment>& assignments
 // ?? How do we add in constraint propagation?
 // It needs to maintain the state of clauses before propagation
 // so we can reset if we made a wrong decision
-bool Solver::_evaluate_clauses(const std::vector<Assignment>& assignments) {
+bool Solver::_evaluate_clauses(const std::vector<Status>& assignments) {
   for (const auto& c : _clauses) {
+
     bool clause_is_sat = false;
     for (const auto& lit : c.literals) {
       // assignment[lit / 2] to get the corresponding variable's assignment
       // and xor with the rightmost bit of lit (lit & 1) 
       // (equals to checking if the lit is even)
-      if (assignments[lit._id / 2] != Assignment::UNDEFINED && 
+      if (assignments[lit._id / 2] != Status::UNDEFINED && 
           static_cast<int>(assignments[lit._id / 2]) ^ (lit._id & 1)) 
       {
         clause_is_sat = true;
@@ -160,6 +177,7 @@ bool Solver::_evaluate_clauses(const std::vector<Assignment>& assignments) {
 
   return true;
 }
+
 
 void Solver::_print_assignments() {
   for (size_t i = 0; i < _assignments.size(); i++) {
@@ -265,15 +283,6 @@ void Solver::_determine_literal(std::vector<Clause>& clauses, int new_lit_id) {
 */
 
 void Solver::dump(std::ostream& os) const {
-  /*
-  os << "Dump Clauses:\n";
-  for (const auto& clause : _clauses) {
-    for (const auto& lit : clause.literals) {
-      os << lit._id << " ";
-    }
-    os << "\n";
-  }
-  */
 
   os << num_variables() << " variables\n";
   os << num_clauses() << " clauses\n";
@@ -282,19 +291,41 @@ void Solver::dump(std::ostream& os) const {
   for (size_t i = 0; i < _assignments.size(); i++) {
     os << static_cast<int>(_assignments[i]) << " ";
   }
+
+
+  os << "\nVar to Clause Mapping:\n";
+  for (const auto& [key, value] : _var_to_clauses) {
+    os << "Var: " << key << " -> Clauses: ";
+    for (const auto& v : value) {
+      os << v << " ";
+    }
+    os << "\n";
+  }
+
   os << "\n";
 }
 
 void Solver::_init() {
+  // initialize assignments
   _assignments.resize(num_variables());
   for (size_t i = 0; i < num_variables(); i++) {
-    _assignments[i] = Assignment::UNDEFINED; // unassigned state
+    _assignments[i] = Status::UNDEFINED; // unassigned state
   }
+
+  // initialize clauses status
+  _clauses_status.resize(num_clauses());
+  for (size_t i = 0; i < num_clauses(); i++) {
+    _clauses_status[i] = Status::UNDEFINED;
+  }
+
 }
 
 void Solver::reset() {
   _assignments.clear();
   _clauses.clear();
+  _clauses_status.clear();
+  _var_to_clauses.clear();
+  _num_sat_clauses = 0;
 }
 
 bool Solver::solve() {
