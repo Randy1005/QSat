@@ -13,6 +13,11 @@ enum class Status {
   UNDEFINED
 };
 
+struct ClauseSatisfiability {
+  int clause_id;
+  bool is_modified;
+};
+
 /**
 @struct Literal
 @brief struct to create a literal
@@ -164,6 +169,7 @@ private:
 
   bool _backtrack(int decision_depth, std::vector<Status>& assignments);
   bool _evaluate_clauses(const std::vector<Status>& assignments) ;
+  size_t _propagate_constraint(int decision_depth, const std::vector<Status>& assignments);
   void _init();
   void _print_assignments();
   
@@ -172,7 +178,7 @@ private:
   std::vector<Status> _assignments;
 
   // mapping: assignments (variable) -> clauses' id
-  std::map<int, std::vector<int>> _var_to_clauses;
+  std::map<int, std::vector<ClauseSatisfiability>> _var_to_clauses;
 
   // counter for currently satisfied clauses
   size_t _num_sat_clauses = 0;

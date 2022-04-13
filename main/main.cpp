@@ -18,7 +18,7 @@ int main(int argc, char* argv[]) {
     end_time = std::chrono::steady_clock::now();
     solver.dump(std::cout);
   } else {
-
+    std::cout << "UNSAT\n";
   }
 
   std::chrono::duration<double, std::milli> elapsed_time = end_time - start_time;  
