@@ -130,24 +130,25 @@ bool Solver::_backtrack(int decision_depth, std::vector<Status>& assignments) {
     
     // propagate constraints and update satisfiability of the clauses corresponding to
     // current deciding assignment (variable)
-    //size_t added_sat_clauses_cnt = _propagate_constraint(decision_depth, assignments);
+    size_t added_sat_clauses_cnt = _propagate_constraint(decision_depth, assignments);
 
     //std::cout << "Newly Sat Clause Count: " << added_sat_clauses_cnt << "\n"; 
 
     // check if all clauses are sat
-    //_num_sat_clauses += added_sat_clauses_cnt;
+    _num_sat_clauses += added_sat_clauses_cnt;
     
-    /*
+    
     if (_num_sat_clauses == num_clauses()) {
       return true;
     }
-    */
+    
     
 
-    
+    /*    
     if (_evaluate_clauses(assignments)) {
       return true;
     }
+    */
     
   
     
@@ -161,7 +162,7 @@ bool Solver::_backtrack(int decision_depth, std::vector<Status>& assignments) {
     // reset clause satisfiability
     assignments[decision_depth] = Status::UNDEFINED;
 
-    /*
+    
     _num_sat_clauses -= added_sat_clauses_cnt;
     for (auto& cs : _var_to_clauses[decision_depth]) {
       if (cs.is_modified) {
@@ -169,7 +170,7 @@ bool Solver::_backtrack(int decision_depth, std::vector<Status>& assignments) {
         cs.is_modified = false;
       }
     }
-    */
+    
 		
 
   }
