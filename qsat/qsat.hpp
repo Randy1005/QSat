@@ -151,6 +151,8 @@ public:
 
 
   void reset();
+  
+  void read_dimacs(std::istream&);
 
 private:
 
@@ -173,6 +175,8 @@ private:
   size_t _propagate_constraint(int decision_depth, const std::vector<Status>& assignments);
   void _init();
   void _print_assignments();
+
+
   
 
   std::vector<Clause> _clauses; 

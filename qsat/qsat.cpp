@@ -37,27 +37,33 @@ void Solver::read_dimacs(const std::string& inputFileName) {
     throw std::runtime_error("failed to open a file");
   }
 
+  read_dimacs(ifs);
+}
+
+// TODO: object slicing
+void Solver::read_dimacs(std::istream& is) {
+
   int variable = -1;
   std::string buf;
   std::vector<Literal> literals;
 
   while (true) {
-    ifs >> buf;
+    is >> buf;
 
-    if (ifs.eof()) {
+    if (is.eof()) {
       break;
     }
     if (buf == "c") {
-      std::getline(ifs, buf);
+      std::getline(is, buf);
     }
     else if (buf == "p") {
-      ifs >> buf >> buf >> buf;
+      is >> buf >> buf >> buf;
     }
     else {
       variable = std::stoi(buf);
       while (variable != 0) { 
         _read_clause(variable, literals); 
-        ifs >> variable; 
+        is >> variable; 
       }
       add_clause(std::move(literals));
       literals.clear();

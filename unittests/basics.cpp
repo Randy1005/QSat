@@ -2,7 +2,6 @@
 
 #include <doctest.h>
 #include <qsat/qsat.hpp>
-#include <filesystem>
 
 // Unittest: basic interface usage
 TEST_CASE("Statistics" * doctest::timeout(300)) {

@@ -4,6 +4,7 @@ include(${QSAT_3RD_PARTY_DIR}/doctest/doctest.cmake)
 
 list(APPEND QSAT_UNITTESTS 
   basics 
+  dimacs_1
 )
 
 foreach(unittest IN LISTS QSAT_UNITTESTS)
