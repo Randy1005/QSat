@@ -210,7 +210,8 @@ size_t Solver::_propagate_constraint(int decision_depth, const std::vector<Statu
     if (_clauses_status[cs.clause_id] == Status::TRUE) {
       continue;
     }
-
+    
+    // TODO: you still have many redundant computations...
     for (const auto& l : _clauses[cs.clause_id].literals) {
       if (assignments[l._id / 2] != Status::UNDEFINED && 
           static_cast<int>(assignments[l._id / 2]) ^ (l._id & 1)) {

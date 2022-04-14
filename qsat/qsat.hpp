@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <string>
 #include <chrono>
+#include <unordered_map>
 
 namespace qsat {
 
@@ -178,7 +179,7 @@ private:
   std::vector<Status> _assignments;
 
   // mapping: assignments (variable) -> clauses' id
-  std::map<int, std::vector<ClauseSatisfiability>> _var_to_clauses;
+  std::unordered_map<int, std::vector<ClauseSatisfiability>> _var_to_clauses;
 
   // counter for currently satisfied clauses
   size_t _num_sat_clauses = 0;

@@ -4,6 +4,7 @@ project(QSat VERSION 1.0)
 
 message("PROJECT_NAME:" ${PROJECT_NAME})
 message("PROJECT_SOURCE_DIR:" ${PROJECT_SOURCE_DIR})
+message("CMAKE_BUILD_TYPE:" ${CMAKE_BUILD_TYPE})
 
 # Turn on the verbose
 set(CMAKE_VERBOSE_MAKEFILE ON)
