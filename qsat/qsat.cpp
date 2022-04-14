@@ -202,10 +202,7 @@ bool Solver::_evaluate_clauses(const std::vector<Status>& assignments) {
 
 size_t Solver::_propagate_constraint(int decision_depth, const std::vector<Status>& assignments) {
   size_t sat_clauses_cnt = 0;
- 
   
-  std::chrono::steady_clock::time_point start_time, end_time; 
-  start_time = std::chrono::steady_clock::now();
   // std::cout << "depth: " << decision_depth << "\n";
 
   for (auto& cs : _var_to_clauses[decision_depth]) {
@@ -232,9 +229,6 @@ size_t Solver::_propagate_constraint(int decision_depth, const std::vector<Statu
   }
   */
   
-  end_time = std::chrono::steady_clock::now();
-  std::chrono::duration<double, std::milli> elapsed_time = end_time - start_time;  
-  std::cout << "Propagate run time: " << elapsed_time.count() << "\n"; 
   return sat_clauses_cnt;
 }
 
