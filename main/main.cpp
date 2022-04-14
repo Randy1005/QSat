@@ -18,6 +18,7 @@ int main(int argc, char* argv[]) {
     end_time = std::chrono::steady_clock::now();
     solver.dump(std::cout);
   } else {
+    end_time = std::chrono::steady_clock::now();
     std::cout << "UNSAT\n";
   }
 

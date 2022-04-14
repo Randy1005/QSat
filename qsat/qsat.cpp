@@ -141,17 +141,13 @@ bool Solver::_backtrack(int decision_depth, std::vector<Status>& assignments) {
     if (_num_sat_clauses == num_clauses()) {
       return true;
     }
-    
-    
 
     /*    
     if (_evaluate_clauses(assignments)) {
       return true;
     }
     */
-    
   
-    
     if (_backtrack(decision_depth + 1, assignments)) {
       return true;
     }
@@ -162,7 +158,6 @@ bool Solver::_backtrack(int decision_depth, std::vector<Status>& assignments) {
     // reset clause satisfiability
     assignments[decision_depth] = Status::UNDEFINED;
 
-    
     _num_sat_clauses -= added_sat_clauses_cnt;
     for (auto& cs : _var_to_clauses[decision_depth]) {
       if (cs.is_modified) {
@@ -171,8 +166,6 @@ bool Solver::_backtrack(int decision_depth, std::vector<Status>& assignments) {
       }
     }
     
-		
-
   }
 
   // searched the whole tree, and didn't find a solution
@@ -209,7 +202,10 @@ bool Solver::_evaluate_clauses(const std::vector<Status>& assignments) {
 
 size_t Solver::_propagate_constraint(int decision_depth, const std::vector<Status>& assignments) {
   size_t sat_clauses_cnt = 0;
+ 
   
+  std::chrono::steady_clock::time_point start_time, end_time; 
+  start_time = std::chrono::steady_clock::now();
   // std::cout << "depth: " << decision_depth << "\n";
 
   for (auto& cs : _var_to_clauses[decision_depth]) {
@@ -236,7 +232,9 @@ size_t Solver::_propagate_constraint(int decision_depth, const std::vector<Statu
   }
   */
   
-
+  end_time = std::chrono::steady_clock::now();
+  std::chrono::duration<double, std::milli> elapsed_time = end_time - start_time;  
+  std::cout << "Propagate run time: " << elapsed_time.count() << "\n"; 
   return sat_clauses_cnt;
 }
 
