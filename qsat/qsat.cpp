@@ -125,7 +125,6 @@ bool Solver::_backtrack(int decision_depth, std::vector<Status>& assignments) {
   for (int val = 0; val <= 1; val++) {
     assignments[decision_depth] = static_cast<Status>(val);
     
-
     // _print_assignments();    
     // if all of the clauses evaluates to true, then we have a solution
     if (_evaluate_clauses(assignments)) {
