@@ -148,11 +148,6 @@ bool Solver::_backtrack(int decision_depth, std::vector<Status>& assignments) {
       return true;
     }
 
-    /*    
-    if (_evaluate_clauses(assignments)) {
-      return true;
-    }
-    */
   
     if (_backtrack(decision_depth + 1, assignments)) {
       return true;
@@ -218,7 +213,11 @@ size_t Solver::_propagate_constraint(int decision_depth, const std::vector<Statu
     }
     
     // TODO: you still have many redundant computations...
+    // still looping thru every literal when we know the exact var to check  
+    
+
     for (const auto& l : _clauses[cs.clause_id].literals) {
+
       if (assignments[l._id / 2] != Status::UNDEFINED && 
           static_cast<int>(assignments[l._id / 2]) ^ (l._id & 1)) {
         _clauses_status[cs.clause_id] = Status::TRUE;

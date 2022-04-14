@@ -51,7 +51,6 @@ class Literal {
     Literal(int var);
 
   private:
-    // TODO: make this a private _id
     size_t _id;
 
 };
@@ -149,9 +148,7 @@ public:
     return _assignments[variable > 0 ? variable - 1 : -variable - 1];
   }
 
-
   void reset();
-  
   void read_dimacs(std::istream&);
 
 private:
