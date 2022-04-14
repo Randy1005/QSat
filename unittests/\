@@ -98,7 +98,6 @@ const std::string v20_c91 = "\
   14 19 -10 0";
 
 TEST_CASE("DIMACS.v20_c91.sat") {
-  
   qsat::Solver solver;
 
   std::istringstream iss(v20_c91);
