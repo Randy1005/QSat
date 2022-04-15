@@ -216,8 +216,7 @@ size_t Solver::_propagate_constraint(int decision_depth, const std::vector<Statu
     // can be handled with preprocessing
     // like e.g. eliminate that clause
     if (assignments[decision_depth] != Status::UNDEFINED &&
-        static_cast<int>(assignments[decision_depth]) ^ 
-        (cs.lit_id & 1)) {
+        static_cast<int>(assignments[decision_depth]) ^ (cs.lit_id & 1)) {
       _clauses_status[cs.clause_id] = Status::TRUE;
       cs.is_modified = true;
       sat_clauses_cnt++;
