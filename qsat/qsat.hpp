@@ -17,6 +17,7 @@ enum class Status {
 struct ClauseSatisfiability {
   int clause_id;
   bool is_modified;
+  size_t lit_at;
 };
 
 /**

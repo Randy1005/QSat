@@ -7,7 +7,7 @@ list(APPEND QSAT_UNITTESTS
 	dimacs_v16_c18
   dimacs_v20_c91
   dimacs_v20_c91_2
-
+  dimacs_v42_c133
 )
 
 foreach(unittest IN LISTS QSAT_UNITTESTS)

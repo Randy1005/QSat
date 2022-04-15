@@ -84,11 +84,12 @@ void Solver::add_clause(std::vector<Literal>&& lits) {
     max = std::max(max, l._id / 2);
   }
 
-  for (const auto& l : lits) {
+  for (size_t i = 0; i < lits.size(); i++) {
     ClauseSatisfiability cs;
     cs.clause_id = _clauses.size();
     cs.is_modified = false;
-    _var_to_clauses[l._id / 2].push_back(cs);
+    cs.lit_at = i;
+    _var_to_clauses[lits[i]._id / 2].push_back(cs);
   }
 
 
@@ -109,11 +110,12 @@ void Solver::add_clause(const std::vector<Literal>& lits) {
     max = std::max(max, l._id / 2);
   }
 
-  for (const auto& l : lits) {
+  for (size_t i = 0; i < lits.size(); i++) {
     ClauseSatisfiability cs;
     cs.clause_id = _clauses.size();
     cs.is_modified = false;
-    _var_to_clauses[l._id / 2].push_back(cs);
+    cs.lit_at = i;
+    _var_to_clauses[lits[i]._id / 2].push_back(cs);
   }
 
   if (max >= _assignments.size()) {
@@ -189,7 +191,7 @@ bool Solver::_evaluate_clauses(const std::vector<Status>& assignments) {
 					static_cast<int>(assignments[lit._id / 2]) ^ (lit._id & 1)) 
 			{
 				clause_is_sat = true;
-					break;
+				break;
 			}
 		}
 
@@ -204,8 +206,6 @@ bool Solver::_evaluate_clauses(const std::vector<Status>& assignments) {
 size_t Solver::_propagate_constraint(int decision_depth, const std::vector<Status>& assignments) {
   size_t sat_clauses_cnt = 0;
   
-  // std::cout << "depth: " << decision_depth << "\n";
-
   for (auto& cs : _var_to_clauses[decision_depth]) {
     // if this clause is already satisfied, skip
     if (_clauses_status[cs.clause_id] == Status::TRUE) {
@@ -214,8 +214,20 @@ size_t Solver::_propagate_constraint(int decision_depth, const std::vector<Statu
     
     // TODO: you still have many redundant computations...
     // still looping thru every literal when we know the exact var to check  
-    
+    // Note:
+    // I think the case where user enters something like (a + a' + ...)
+    // can be handled with preprocessing
+    if (assignments[decision_depth] != Status::UNDEFINED &&
+        static_cast<int>(assignments[decision_depth]) ^ 
+        (_clauses[cs.clause_id].literals[cs.lit_at]._id & 1)) {
+      _clauses_status[cs.clause_id] = Status::TRUE;
+      cs.is_modified = true;
+      sat_clauses_cnt++;
+      continue;
+    }
 
+
+    /*
     for (const auto& l : _clauses[cs.clause_id].literals) {
 
       if (assignments[l._id / 2] != Status::UNDEFINED && 
@@ -226,14 +238,9 @@ size_t Solver::_propagate_constraint(int decision_depth, const std::vector<Statu
         break;
       } 
     }
+    */
   }
 
-  /*
-  std::cout << "Clause Status: "; 
-  for (int i = 0; i < _clauses_status.size(); i++) {
-    std::cout << static_cast<int>(_clauses_status[i]) << " ";
-  }
-  */
   
   return sat_clauses_cnt;
 }
