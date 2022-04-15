@@ -84,12 +84,12 @@ void Solver::add_clause(std::vector<Literal>&& lits) {
     max = std::max(max, l._id / 2);
   }
 
-  for (size_t i = 0; i < lits.size(); i++) {
+  for (const auto& l : lits) {
     ClauseSatisfiability cs;
     cs.clause_id = _clauses.size();
     cs.is_modified = false;
-    cs.lit_at = i;
-    _var_to_clauses[lits[i]._id / 2].push_back(cs);
+    cs.lit_id = l._id;
+    _var_to_clauses[l._id / 2].push_back(cs);
   }
 
 
@@ -110,12 +110,12 @@ void Solver::add_clause(const std::vector<Literal>& lits) {
     max = std::max(max, l._id / 2);
   }
 
-  for (size_t i = 0; i < lits.size(); i++) {
+  for (const auto& l : lits) {
     ClauseSatisfiability cs;
     cs.clause_id = _clauses.size();
     cs.is_modified = false;
-    cs.lit_at = i;
-    _var_to_clauses[lits[i]._id / 2].push_back(cs);
+    cs.lit_id = l._id;
+    _var_to_clauses[l._id / 2].push_back(cs);
   }
 
   if (max >= _assignments.size()) {
@@ -217,7 +217,7 @@ size_t Solver::_propagate_constraint(int decision_depth, const std::vector<Statu
     // like e.g. eliminate that clause
     if (assignments[decision_depth] != Status::UNDEFINED &&
         static_cast<int>(assignments[decision_depth]) ^ 
-        (_clauses[cs.clause_id].literals[cs.lit_at]._id & 1)) {
+        (cs.lit_id & 1)) {
       _clauses_status[cs.clause_id] = Status::TRUE;
       cs.is_modified = true;
       sat_clauses_cnt++;
