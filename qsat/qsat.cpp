@@ -140,8 +140,6 @@ bool Solver::_backtrack(int decision_depth, std::vector<Status>& assignments) {
     // current deciding assignment (variable)
     size_t added_sat_clauses_cnt = _propagate_constraint(decision_depth, assignments);
 
-    //std::cout << "Newly Sat Clause Count: " << added_sat_clauses_cnt << "\n"; 
-
     // check if all clauses are sat
     _num_sat_clauses += added_sat_clauses_cnt;
     
@@ -150,7 +148,6 @@ bool Solver::_backtrack(int decision_depth, std::vector<Status>& assignments) {
       return true;
     }
 
-  
     if (_backtrack(decision_depth + 1, assignments)) {
       return true;
     }
@@ -217,13 +214,13 @@ size_t Solver::_propagate_constraint(int decision_depth, const std::vector<Statu
     // Note:
     // I think the case where user enters something like (a + a' + ...)
     // can be handled with preprocessing
+    // like e.g. eliminate that clause
     if (assignments[decision_depth] != Status::UNDEFINED &&
         static_cast<int>(assignments[decision_depth]) ^ 
         (_clauses[cs.clause_id].literals[cs.lit_at]._id & 1)) {
       _clauses_status[cs.clause_id] = Status::TRUE;
       cs.is_modified = true;
       sat_clauses_cnt++;
-      continue;
     }
 
 

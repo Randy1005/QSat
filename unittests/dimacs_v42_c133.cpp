@@ -143,7 +143,7 @@ p cnf 42 133\
 
 
 
-TEST_CASE("DIMACS.v42_c133.unsat" * doctest::timeout(5)) {
+TEST_CASE("DIMACS.v42_c133.unsat" * doctest::timeout(300)) {
   qsat::Solver solver;
 
   std::istringstream iss(v42_c133);
