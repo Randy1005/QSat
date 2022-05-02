@@ -142,7 +142,7 @@ bool Solver::_backtrack(int decision_depth, std::vector<Status>& assignments) {
   }
 
   // searched the whole tree, and didn't find a solution
-  // std::cout << "searched the whole tree, returning\n"; 
+  std::cout << "searched the whole tree, returning\n"; 
   return false;
 }
 
