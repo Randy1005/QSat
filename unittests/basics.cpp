@@ -105,8 +105,6 @@ TEST_CASE("CNF.2v.3c.sat.unique" * doctest::timeout(300)) {
   REQUIRE(solver.solve() == true);
   REQUIRE(solver.assignment_of(1) == qsat::Status::TRUE);
   REQUIRE(solver.assignment_of(2) == qsat::Status::TRUE);
-
-
 }
 
 
