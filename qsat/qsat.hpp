@@ -1,9 +1,14 @@
 #pragma once
+#include <iostream>
 #include <vector>
 #include <map>
 #include <algorithm>
 #include <string>
 #include <chrono>
+#include <unordered_map>
+#include <filesystem>
+#include <tao/pegtl.hpp>
+namespace pegtl = tao::pegtl;
 
 namespace qsat {
 
@@ -12,6 +17,64 @@ enum class Status {
   TRUE  = 1,
   UNDEFINED
 };
+
+struct ClauseSatisfiability {
+  int clause_id;
+  bool is_modified;
+  int lit_id;
+};
+
+/**
+@struct pegtl variable prefix
+a single lower case v
+*/
+struct var_prefix : pegtl::string<'v'> {};
+
+/**
+@struct pegtl digits
+e.g. 0, 12, 99, 12384, etc.
+*/
+struct digits : pegtl::plus<pegtl::digit> {};
+
+/**
+@struct pegtl variable name
+consists of prefix and digits
+*/
+struct var_name : pegtl::seq<var_prefix, digits> {};
+
+/**
+@struct pegtl enum prefix
+a single lower case s
+*/
+struct enum_prefix : pegtl::string<'s'> {};
+
+/**
+@struct enum name
+format: [digits]_[digits]
+*/
+struct enum_name : pegtl::seq<enum_prefix, digits, pegtl::string<'_'>, digits> {};
+
+/**
+@struct variable table grammar
+format: [var_name][spaces]-[spaces]*[spaces][enum_name],[0 or more spaces][enum_name], ... 
+*/
+struct var_table_grammar : pegtl::seq<var_name, pegtl::plus<pegtl::space>, pegtl::string<'-'>, 
+                                    pegtl::plus<pegtl::space>, pegtl::string<'*'>,
+                                    pegtl::plus<pegtl::space>, enum_name,
+                                    pegtl::plus<pegtl::star<pegtl::space>>, enum_name> {};
+
+template<typename Rule>
+struct example_action {};
+
+template<>
+struct example_action<var_name> {
+  template<typename ActionInput>
+    static void apply(const ActionInput& in) {
+      std::cout << "parsed segment: " << in.string() << "\n";
+    }
+};
+
+
 
 /**
 @struct Literal
@@ -45,7 +108,6 @@ class Literal {
     Literal(int var);
 
   private:
-    // TODO: make this a private _id
     size_t _id;
 
 };
@@ -143,8 +205,12 @@ public:
     return _assignments[variable > 0 ? variable - 1 : -variable - 1];
   }
 
-
   void reset();
+  void read_dimacs(std::istream&);
+
+
+  bool transpile_task_to_z3(const std::string& task_file_name);
+  bool transpile_task_to_dimacs(const std::string& task_file_name);
 
 private:
 
@@ -164,15 +230,17 @@ private:
 
   bool _backtrack(int decision_depth, std::vector<Status>& assignments);
   bool _evaluate_clauses(const std::vector<Status>& assignments) ;
+  size_t _propagate_constraint(int decision_depth, const std::vector<Status>& assignments);
   void _init();
   void _print_assignments();
+
   
 
   std::vector<Clause> _clauses; 
   std::vector<Status> _assignments;
 
   // mapping: assignments (variable) -> clauses' id
-  std::map<int, std::vector<int>> _var_to_clauses;
+  std::unordered_map<int, std::vector<ClauseSatisfiability>> _var_to_clauses;
 
   // counter for currently satisfied clauses
   size_t _num_sat_clauses = 0;

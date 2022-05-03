@@ -1,4 +1,3 @@
-#include <iostream>
 #include <cmath>
 #include <fstream>
 #include "qsat.hpp"
@@ -37,27 +36,32 @@ void Solver::read_dimacs(const std::string& inputFileName) {
     throw std::runtime_error("failed to open a file");
   }
 
+  read_dimacs(ifs);
+}
+
+void Solver::read_dimacs(std::istream& is) {
+
   int variable = -1;
   std::string buf;
   std::vector<Literal> literals;
 
   while (true) {
-    ifs >> buf;
+    is >> buf;
 
-    if (ifs.eof()) {
+    if (is.eof()) {
       break;
     }
     if (buf == "c") {
-      std::getline(ifs, buf);
+      std::getline(is, buf);
     }
     else if (buf == "p") {
-      ifs >> buf >> buf >> buf;
+      is >> buf >> buf >> buf;
     }
     else {
       variable = std::stoi(buf);
       while (variable != 0) { 
         _read_clause(variable, literals); 
-        ifs >> variable; 
+        is >> variable; 
       }
       add_clause(std::move(literals));
       literals.clear();
@@ -79,8 +83,11 @@ void Solver::add_clause(std::vector<Literal>&& lits) {
   }
 
   for (const auto& l : lits) {
-    // TODO: does this work?
-    _var_to_clauses[l._id / 2].push_back(_clauses.size());
+    ClauseSatisfiability cs;
+    cs.clause_id = _clauses.size();
+    cs.is_modified = false;
+    cs.lit_id = l._id;
+    _var_to_clauses[l._id / 2].push_back(cs);
   }
 
 
@@ -102,8 +109,11 @@ void Solver::add_clause(const std::vector<Literal>& lits) {
   }
 
   for (const auto& l : lits) {
-    // TODO: does this work?
-    _var_to_clauses[l._id / 2].push_back(_clauses.size());
+    ClauseSatisfiability cs;
+    cs.clause_id = _clauses.size();
+    cs.is_modified = false;
+    cs.lit_id = l._id;
+    _var_to_clauses[l._id / 2].push_back(cs);
   }
 
   if (max >= _assignments.size()) {
@@ -111,7 +121,6 @@ void Solver::add_clause(const std::vector<Literal>& lits) {
   }
 
   _clauses.push_back(Clause(lits));
-  
 }
 
 bool Solver::_backtrack(int decision_depth, std::vector<Status>& assignments) {
@@ -125,20 +134,36 @@ bool Solver::_backtrack(int decision_depth, std::vector<Status>& assignments) {
   for (int val = 0; val <= 1; val++) {
     assignments[decision_depth] = static_cast<Status>(val);
     
-    // _print_assignments();    
-    // if all of the clauses evaluates to true, then we have a solution
-    if (_evaluate_clauses(assignments)) {
+    // propagate constraints and update satisfiability of the clauses corresponding to
+    // current deciding assignment (variable)
+    size_t added_sat_clauses_cnt = _propagate_constraint(decision_depth, assignments);
+
+    // check if all clauses are sat
+    _num_sat_clauses += added_sat_clauses_cnt;
+    
+    
+    if (_num_sat_clauses == num_clauses()) {
       return true;
     }
-    
+
     if (_backtrack(decision_depth + 1, assignments)) {
       return true;
     }
 
     // if backtrack returns failure, clear out the previous assignment
     // 0 -> assign false, 1 -> assign true, 2 -> unassigned
+    // num_sat_clauses minus the newly added sat clauses
+    // reset clause satisfiability
     assignments[decision_depth] = Status::UNDEFINED;
 
+    _num_sat_clauses -= added_sat_clauses_cnt;
+    for (auto& cs : _var_to_clauses[decision_depth]) {
+      if (cs.is_modified) {
+        _clauses_status[cs.clause_id] = Status::UNDEFINED;
+        cs.is_modified = false;
+      }
+    }
+    
   }
 
   // searched the whole tree, and didn't find a solution
@@ -150,31 +175,66 @@ bool Solver::_backtrack(int decision_depth, std::vector<Status>& assignments) {
 @brief this method checks if all clauses evaluate to true, if so return true
        if any one of the clauses evaluates to false, then return false
 */
-// ?? How do we add in constraint propagation?
-// It needs to maintain the state of clauses before propagation
-// so we can reset if we made a wrong decision
 bool Solver::_evaluate_clauses(const std::vector<Status>& assignments) {
-  for (const auto& c : _clauses) {
+	for (const auto& c : _clauses) {
+ 		bool clause_is_sat = false;
+		for (const auto& lit : c.literals) {
+			// assignment[lit / 2] to get the corresponding variable's assignment
+			// and xor with the rightmost bit of lit (lit & 1) 
+			// (equals to checking if the lit is even)
+			if (assignments[lit._id / 2] != Status::UNDEFINED && 
+					static_cast<int>(assignments[lit._id / 2]) ^ (lit._id & 1)) 
+			{
+				clause_is_sat = true;
+				break;
+			}
+		}
 
-    bool clause_is_sat = false;
-    for (const auto& lit : c.literals) {
-      // assignment[lit / 2] to get the corresponding variable's assignment
-      // and xor with the rightmost bit of lit (lit & 1) 
-      // (equals to checking if the lit is even)
-      if (assignments[lit._id / 2] != Status::UNDEFINED && 
-          static_cast<int>(assignments[lit._id / 2]) ^ (lit._id & 1)) 
-      {
-        clause_is_sat = true;
-        break;
-      }
-    }
-
-    if (!clause_is_sat) {
-      return false;
-    }
-  }
+		if (!clause_is_sat) {
+			return false;
+		}
+	}
 
   return true;
+}
+
+size_t Solver::_propagate_constraint(int decision_depth, const std::vector<Status>& assignments) {
+  size_t sat_clauses_cnt = 0;
+  
+  for (auto& cs : _var_to_clauses[decision_depth]) {
+    // if this clause is already satisfied, skip
+    if (_clauses_status[cs.clause_id] == Status::TRUE) {
+      continue;
+    }
+    
+    // Note:
+    // I think the case where user enters something like (a + a' + ...)
+    // can be handled with preprocessing
+    // like e.g. eliminate that clause
+    if (assignments[decision_depth] != Status::UNDEFINED &&
+        static_cast<int>(assignments[decision_depth]) ^ (cs.lit_id & 1)) {
+      _clauses_status[cs.clause_id] = Status::TRUE;
+      cs.is_modified = true;
+      sat_clauses_cnt++;
+    }
+
+
+    /*
+    for (const auto& l : _clauses[cs.clause_id].literals) {
+
+      if (assignments[l._id / 2] != Status::UNDEFINED && 
+          static_cast<int>(assignments[l._id / 2]) ^ (l._id & 1)) {
+        _clauses_status[cs.clause_id] = Status::TRUE;
+        cs.is_modified = true;
+        sat_clauses_cnt++;
+        break;
+      } 
+    }
+    */
+  }
+
+  
+  return sat_clauses_cnt;
 }
 
 
@@ -296,7 +356,7 @@ void Solver::dump(std::ostream& os) const {
   for (const auto& [key, value] : _var_to_clauses) {
     os << "Var: " << key << " -> Clauses: ";
     for (const auto& v : value) {
-      os << v << " ";
+      os << v.clause_id << " ";
     }
     os << "\n";
   }
@@ -335,6 +395,19 @@ bool Solver::solve() {
 
 const std::vector<Clause>& Solver::clauses() const {
   return _clauses;
+}
+
+
+bool Solver::transpile_task_to_z3(const std::string& task_file_name) {
+  
+  pegtl::read_input<pegtl::tracking_mode::lazy, 
+                    pegtl::eol::crlf> task_file(task_file_name);
+  
+  // return pegtl::parse<var_table_grammar, example_action>(task_file); 
+}
+
+bool Solver::transpile_task_to_dimacs(const std::string& task_file_name) {
+
 }
 
 }  // end of namespace qsat ---------------------------------------------------
