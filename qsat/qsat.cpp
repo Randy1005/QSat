@@ -1,5 +1,6 @@
 #include <cmath>
 #include <fstream>
+#include <iomanip>
 #include "qsat.hpp"
 
 namespace qsat {
@@ -398,12 +399,42 @@ const std::vector<Clause>& Solver::clauses() const {
 }
 
 
-bool Solver::transpile_task_to_z3(const std::string& task_file_name) {
+bool Solver::transpile_task_to_z3(const std::string& task_file_name) { 	 
+	std::ifstream ifs;
+  ifs.open(task_file_name);
+
+  if (!ifs) {
+    throw std::runtime_error("failed to open task file."); 
+  }
   
-  pegtl::read_input<pegtl::tracking_mode::lazy, 
-                    pegtl::eol::crlf> task_file(task_file_name);
-  
-  // return pegtl::parse<var_table_grammar, example_action>(task_file); 
+  std::string line_buf;
+  var_state state;
+  while (true) {
+    if (ifs.eof()) {
+      break;
+    }
+
+    std::getline(ifs, line_buf);
+    pegtl::string_input in(line_buf, "task_file");
+   
+    // TODO: parse
+    try {
+      pegtl::parse<var_table_grammar, action>(in, state); 
+    }
+    catch( const pegtl::parse_error& e ) {
+       const auto p = e.positions().front();
+       std::cerr << e.what() << '\n'
+                 << in.line_at( p ) << '\n'
+                 << std::setw( p.column ) << '^' << std::endl;
+    }
+
+    std::cout << "var_name: " << state.var_name << "\n";
+    std::cout << "enum_names:\n";
+    for (const auto& name : state.enum_names) {
+      std::cout << name << "\n";
+    }
+  }
+
 }
 
 bool Solver::transpile_task_to_dimacs(const std::string& task_file_name) {

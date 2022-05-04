@@ -28,7 +28,7 @@ struct ClauseSatisfiability {
 @struct pegtl variable prefix
 a single lower case v
 */
-struct var_prefix : pegtl::string<'v'> {};
+struct var_prefix : pegtl::one<'v'> {};
 
 /**
 @struct pegtl digits
@@ -46,33 +46,106 @@ struct var_name : pegtl::seq<var_prefix, digits> {};
 @struct pegtl enum prefix
 a single lower case s
 */
-struct enum_prefix : pegtl::string<'s'> {};
+struct enum_prefix : pegtl::one<'s'> {};
+
 
 /**
-@struct enum name
-format: [digits]_[digits]
+@struct pegtl enum name
+format: s[digits]_[digits]
 */
-struct enum_name : pegtl::seq<enum_prefix, digits, pegtl::string<'_'>, digits> {};
+struct enum_name : pegtl::seq<enum_prefix, digits, pegtl::one<'_'>, digits> {};
 
 /**
-@struct variable table grammar
-format: [var_name][spaces]-[spaces]*[spaces][enum_name],[0 or more spaces][enum_name], ... 
+@struct pegtl enum_names
+concatenated with commas
 */
-struct var_table_grammar : pegtl::seq<var_name, pegtl::plus<pegtl::space>, pegtl::string<'-'>, 
-                                    pegtl::plus<pegtl::space>, pegtl::string<'*'>,
-                                    pegtl::plus<pegtl::space>, enum_name,
-                                    pegtl::plus<pegtl::star<pegtl::space>>, enum_name> {};
+struct enum_names : pegtl::seq<enum_name, 
+                              pegtl::star<pegtl::space>,
+                              pegtl::one<','>,
+                              pegtl::star<pegtl::space>, 
+                              enum_name,
+                              pegtl::star<pegtl::space>,
+                              pegtl::star<pegtl::one<','>,
+                                          pegtl::star<pegtl::space>,
+                                          enum_name>> {};
+
+/**
+@struct pegtl enum ss (don't know what this is) name
+format: ss_[digits]
+*/
+struct enum_ss_name : pegtl::seq<pegtl::string<'s', 's'>, 
+                                pegtl::one<'_'>, 
+                                digits> {};
+
+/**
+@struct pegtl enum ss names
+concatenated with commas
+*/
+struct enum_ss_names : pegtl::seq<enum_ss_name, 
+                                pegtl::star<pegtl::space>,
+                                pegtl::one<','>,
+                                pegtl::star<pegtl::space>, 
+                                enum_ss_name,
+                                pegtl::star<pegtl::space>, 
+                                pegtl::star<pegtl::one<','>,
+                                            pegtl::star<pegtl::space>,
+                                            enum_ss_name>> {};
+
+/**
+@struct pegtl decimal number 
+*/
+struct dec_num : pegtl::seq<digits, pegtl::string<'\'', 'd'>, digits> {};
+
+
+/**
+@struct pegtl variable table grammar
+*/
+struct var_table_grammar : pegtl::seq<var_name, pegtl::star<pegtl::space>, 
+                                    pegtl::one<'-'>, 
+                                    pegtl::star<pegtl::space>, 
+                                    pegtl::sor<enum_name, 
+                                              enum_ss_name, 
+                                              dec_num,
+                                              pegtl::one<'*'>>,
+                                    pegtl::star<pegtl::space>,
+                                    pegtl::sor<enum_names, 
+                                              enum_ss_names,
+                                              digits>> {};
+
+
+struct var_state {
+  std::string var_name;
+  std::vector<std::string> enum_names;
+  std::vector<std::string> enum_ss_names;
+  // ... etc
+  // try this state struct to store 
+  // values during parse run
+};
+
 
 template<typename Rule>
-struct example_action {};
+struct action {};
+
+
 
 template<>
-struct example_action<var_name> {
+struct action<var_name> {
   template<typename ActionInput>
-    static void apply(const ActionInput& in) {
-      std::cout << "parsed segment: " << in.string() << "\n";
-    }
+  static void apply(const ActionInput& in, var_state& state) {
+    state.var_name = in.string();
+  }
 };
+
+template<>
+struct action<enum_name> {
+  template<typename ActionInput>
+  static void apply(const ActionInput& in, var_state& state) {
+    state.enum_names.push_back(in.string());
+  }
+};
+
+
+
 
 
 
@@ -101,7 +174,6 @@ class Literal {
   friend class Solver;
 
   public:
-    // TODO: friend class Clause
     /**
     @brief constructs a literal with a given variable
     */
