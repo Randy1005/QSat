@@ -67,7 +67,7 @@ struct enum_name : pegtl::seq<enum_prefix, digits, pegtl::one<'_'>, digits> {};
 @struct pegtl enum_names
 concatenated with commas
 */
-struct enum_names : pegtl::seq<enum_name, 
+struct enum_names : pegtl::seq<pegtl::star<pegtl::space>, enum_name, 
                               pegtl::star<pegtl::space>,
                               pegtl::one<','>,
                               pegtl::star<pegtl::space>, 
@@ -89,7 +89,7 @@ struct enum_ss_name : pegtl::seq<pegtl::string<'s', 's'>,
 @struct pegtl enum ss names
 concatenated with commas
 */
-struct enum_ss_names : pegtl::seq<enum_ss_name, 
+struct enum_ss_names : pegtl::seq<pegtl::star<pegtl::space>, enum_ss_name, 
                                 pegtl::star<pegtl::space>,
                                 pegtl::one<','>,
                                 pegtl::star<pegtl::space>, 
@@ -113,29 +113,66 @@ struct var_type : pegtl::sor<enum_name,
                             pegtl::one<'*'>> {};
 
 /**
+@struct pegtl dash var type
+just so we don't do anything when we match the var_type
+*/
+struct dash_var_type : pegtl::seq<pegtl::star<pegtl::space>,
+                                pegtl::one<'-'>,
+                                pegtl::star<pegtl::space>,
+                                var_type> {};
+
+/**
+@struct pegtl digits preceded with spaces (guaranteed to be plain numbers) 
+@brief format:  [space*][digits],
+[digits] represent bits for BitVec
+*/
+struct digits_bits : pegtl::seq<pegtl::star<pegtl::space>,
+                                          digits> {};
+
+
+
+
+/**
 @struct pegtl variable table grammar
 */
-struct var_table_grammar : pegtl::seq<var_name, pegtl::star<pegtl::space>, 
-                                    pegtl::one<'-'>, 
-                                    pegtl::star<pegtl::space>, 
-                                    var_type,
-                                    pegtl::star<pegtl::space>,
+struct var_table_grammar : pegtl::seq<var_name, dash_var_type, 
                                     pegtl::sor<enum_names, 
                                               enum_ss_names,
-                                              digits>> {};
-
-
-
+                                              digits_bits>> {};
 struct var_state {
   std::string var_name;
   std::string enum_sort_name; // it's just the uppercase var_name
   std::vector<std::string> enum_names;
   std::vector<std::string> enum_ss_names;
+
+  size_t bits; // this is based on guessing from the large task file...
+               // will need to confirm with Yi Ling
   // ... etc
 };
 
 template<typename Rule>
 struct action {};
+
+template<>
+struct action<dash_var_type> {
+  template<typename ActionInput>
+  static void apply(const ActionInput& in, 
+                    var_state& state, 
+                    std::ofstream& ofs) {    
+    // std::cout << "matched dash var type " << in.string() << std::endl;
+    // pop the unnecessary enum name
+    if (!state.enum_names.empty()) {
+      state.enum_names.pop_back();
+    }
+
+    if (!state.enum_ss_names.empty()) {
+      state.enum_ss_names.pop_back();
+    }
+  }
+};
+
+
+
 
 /**
 @struct pegtl var_name action
@@ -145,8 +182,10 @@ and clear enum names
 template<>
 struct action<var_name> {
   template<typename ActionInput>
-  static void apply(const ActionInput& in, var_state& state) {    
-    // std::cout << "I saw a var_name." << std::endl;
+  static void apply(const ActionInput& in, 
+                    var_state& state, 
+                    std::ofstream& ofs) {    
+    // std::cout << "var_name: " << in.string() << std::endl;
     state.var_name = in.string();
     
     std::string s(state.var_name);
@@ -154,6 +193,7 @@ struct action<var_name> {
     state.enum_sort_name = s;
     
     state.enum_names.clear();
+    state.enum_ss_names.clear();
   }
 };
 
@@ -164,12 +204,31 @@ the enum name string vector
 */
 template<>
 struct action<enum_name> {
-  template<typename ActionInput>
-  static void apply(const ActionInput& in, var_state& state) {
-    // std::cout << "I saw a enum_name." << std::endl;
+  template<typename actioninput>
+  static void apply(const actioninput& in, 
+                    var_state& state, 
+                    std::ofstream& ofs) {
+    // std::cout << "i saw a enum_name." << std::endl;
     state.enum_names.push_back(in.string());
   }
 };
+
+/**
+@struct pegtl enum_ss_name action
+@brief when we match the enum_name grammar, store them into
+the enum name string vector
+*/
+template<>
+struct action<enum_ss_name> {
+  template<typename actioninput>
+  static void apply(const actioninput& in, 
+                    var_state& state, 
+                    std::ofstream& ofs) {
+    // std::cout << "i saw a enum_ss_name." << std::endl;
+    state.enum_ss_names.push_back(in.string());
+  }
+};
+
 
 // we probably don't need this
 // since we can parse the actual enums or digits
@@ -177,7 +236,9 @@ struct action<enum_name> {
 template<>
 struct action<var_type> {
   template<typename ActionInput>
-  static void apply(const ActionInput& in, var_state& state) {
+  static void apply(const ActionInput& in, 
+                    var_state& state, 
+                    std::ofstream& ofs) {
     // std::cout << "I saw a var_type." << std::endl;
   }
 };
@@ -191,14 +252,81 @@ write EnumSort(...) into z3
 template<>
 struct action<enum_names> {
   template<typename ActionInput>
-  static void apply(const ActionInput& in, var_state& state) {
+  static void apply(const ActionInput& in, 
+                    var_state& state, 
+                    std::ofstream& ofs) {
     
+    // EnumSort definition
+    ofs << state.enum_sort_name << ", (";
+    const size_t enum_names_size = state.enum_names.size();
+    for (size_t i = 0; i < enum_names_size; i++) {
+      ofs << state.enum_names[i];
+      if (i != enum_names_size - 1) {
+        ofs << ", ";
+      }
+    }
+    ofs << ") = EnumSort(\'" << state.enum_sort_name << "\', [";
+    for (size_t i = 0; i < enum_names_size; i++) {
+      ofs << "\'" << state.enum_names[i] << "\'";
+      if (i != enum_names_size - 1) {
+        ofs << ", ";
+      }
+    }
+    ofs << "])\n";
+
+    // declare the actual enum sort in z3
+    ofs << state.var_name << " = Const(\"" << state.var_name << "\", "
+        << state.enum_sort_name << ")\n";
+  }
+};
+
+template<>
+struct action<enum_ss_names> {
+  template<typename ActionInput>
+  static void apply(const ActionInput& in,
+                    var_state& state,
+                    std::ofstream& ofs) {
+    // EnumSort definition
+    ofs << state.enum_sort_name << ", (";
+    const size_t enum_ss_names_size = state.enum_ss_names.size();
+    for (size_t i = 0; i < enum_ss_names_size; i++) {
+      ofs << state.enum_ss_names[i];
+      if (i != enum_ss_names_size - 1) {
+        ofs << ", ";
+      }
+    }
+    ofs << ") = EnumSort(\'" << state.enum_sort_name << "\', [";
+    for (size_t i = 0; i < enum_ss_names_size; i++) {
+      ofs << "\'" << state.enum_ss_names[i] << "\'";
+      if (i != enum_ss_names_size - 1) {
+        ofs << ", ";
+      }
+    }
+    ofs << "])\n";
+
+    // declare the actual enum sort in z3
+    ofs << state.var_name << " = Const(\"" << state.var_name << "\", "
+        << state.enum_sort_name << ")\n";
   }
 };
 
 
+/**
+@struct pegtl digits_bits action
+@brief store these as bits whenever we match the digit_bits grammar
+*/
+template<>
+struct action<digits_bits> {
+  template<typename ActionInput>
+  static void apply(const ActionInput& in, 
+                    var_state& state, 
+                    std::ofstream& ofs) {
 
-
+    // write BitVec definition to z3
+    ofs << state.var_name << " = BitVec(\'" << state.var_name
+        << "\', " << stoi(in.string()) << ")\n"; 
+  }
+};
 
 
 /**

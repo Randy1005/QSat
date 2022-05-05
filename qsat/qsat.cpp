@@ -410,11 +410,11 @@ bool Solver::transpile_task_to_z3(const std::string& task_file_name) {
 
 
   // open z3py file to write to
-  _z3_ofs = std::ofstream("../intel_task_files/_gen_z3.py", std::ios::app);
+  _z3_ofs = std::ofstream("../intel_task_files/_gen_z3.py", std::ios::trunc);
   _z3_ofs << "from z3 import *\n";
   _z3_ofs << "from time import process_time\n"; 
 
-
+  // parse task file
   std::string line_buf;
   var_state state;
   while (true) {
@@ -426,8 +426,9 @@ bool Solver::transpile_task_to_z3(const std::string& task_file_name) {
     pegtl::string_input in(line_buf, "task_file");
    
     try {
-      if (pegtl::parse<var_table_grammar, action>(in, state)) {
-      
+      if (pegtl::parse<var_table_grammar, action>(in, state, _z3_ofs)) {
+        
+
       } else {
         // std::cout << "can't recognize grammar.\n";
       } 
