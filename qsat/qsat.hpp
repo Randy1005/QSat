@@ -1,5 +1,6 @@
 #pragma once
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <map>
 #include <algorithm>
@@ -16,6 +17,13 @@ enum class Status {
   FALSE = 0,
   TRUE  = 1,
   UNDEFINED
+};
+
+enum class VarType {
+  ENUM = 0,
+  ENUM_SS = 1,
+  DEC_NUM,
+  UNSPECIFIED
 };
 
 struct ClauseSatisfiability {
@@ -96,6 +104,13 @@ struct enum_ss_names : pegtl::seq<enum_ss_name,
 */
 struct dec_num : pegtl::seq<digits, pegtl::string<'\'', 'd'>, digits> {};
 
+/**
+@struct pegtl var type
+*/
+struct var_type : pegtl::sor<enum_name, 
+                            enum_ss_name, 
+                            dec_num, 
+                            pegtl::one<'*'>> {};
 
 /**
 @struct pegtl variable table grammar
@@ -103,44 +118,81 @@ struct dec_num : pegtl::seq<digits, pegtl::string<'\'', 'd'>, digits> {};
 struct var_table_grammar : pegtl::seq<var_name, pegtl::star<pegtl::space>, 
                                     pegtl::one<'-'>, 
                                     pegtl::star<pegtl::space>, 
-                                    pegtl::sor<enum_name, 
-                                              enum_ss_name, 
-                                              dec_num,
-                                              pegtl::one<'*'>>,
+                                    var_type,
                                     pegtl::star<pegtl::space>,
                                     pegtl::sor<enum_names, 
                                               enum_ss_names,
                                               digits>> {};
 
 
+
 struct var_state {
   std::string var_name;
+  std::string enum_sort_name; // it's just the uppercase var_name
   std::vector<std::string> enum_names;
   std::vector<std::string> enum_ss_names;
   // ... etc
-  // try this state struct to store 
-  // values during parse run
 };
-
 
 template<typename Rule>
 struct action {};
 
-
-
+/**
+@struct pegtl var_name action
+@brief when we match the var_name grammar, store the var_name
+and clear enum names
+*/
 template<>
 struct action<var_name> {
   template<typename ActionInput>
-  static void apply(const ActionInput& in, var_state& state) {
+  static void apply(const ActionInput& in, var_state& state) {    
+    // std::cout << "I saw a var_name." << std::endl;
     state.var_name = in.string();
+    
+    std::string s(state.var_name);
+    s[0] = toupper(s[0]);
+    state.enum_sort_name = s;
+    
+    state.enum_names.clear();
   }
 };
 
+/**
+@struct pegtl enum_name action
+@brief when we match the enum_name grammar, store them into
+the enum name string vector
+*/
 template<>
 struct action<enum_name> {
   template<typename ActionInput>
   static void apply(const ActionInput& in, var_state& state) {
+    // std::cout << "I saw a enum_name." << std::endl;
     state.enum_names.push_back(in.string());
+  }
+};
+
+// we probably don't need this
+// since we can parse the actual enums or digits
+// and know what we should write into z3
+template<>
+struct action<var_type> {
+  template<typename ActionInput>
+  static void apply(const ActionInput& in, var_state& state) {
+    // std::cout << "I saw a var_type." << std::endl;
+  }
+};
+
+
+/**
+@struct enum_names action
+@brief when we match the enum_names grammar,
+write EnumSort(...) into z3
+*/
+template<>
+struct action<enum_names> {
+  template<typename ActionInput>
+  static void apply(const ActionInput& in, var_state& state) {
+    
   }
 };
 
@@ -310,6 +362,10 @@ private:
 
   std::vector<Clause> _clauses; 
   std::vector<Status> _assignments;
+  
+  // output file stream to write to z3py
+  std::ofstream _z3_ofs;
+
 
   // mapping: assignments (variable) -> clauses' id
   std::unordered_map<int, std::vector<ClauseSatisfiability>> _var_to_clauses;

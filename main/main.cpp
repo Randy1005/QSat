@@ -14,17 +14,17 @@ int main(int argc, char* argv[]) {
 
   start_time = std::chrono::steady_clock::now(); 
 
-  solver.transpile_task_to_z3(argv[1]);  
+  bool res = solver.transpile_task_to_z3(argv[1]);  
 
   end_time = std::chrono::steady_clock::now(); 
 
 
-  
+   
   std::chrono::duration<double, std::milli> elapsed_time = end_time - start_time;  
   std::cout << "Run time: " 
             << elapsed_time.count()
             << " ms\n";
-
+  
 
   return 0;
 }

@@ -1,5 +1,4 @@
 #include <cmath>
-#include <fstream>
 #include <iomanip>
 #include "qsat.hpp"
 
@@ -378,6 +377,7 @@ void Solver::_init() {
     _clauses_status[i] = Status::UNDEFINED;
   }
 
+
 }
 
 void Solver::reset() {
@@ -403,10 +403,18 @@ bool Solver::transpile_task_to_z3(const std::string& task_file_name) {
 	std::ifstream ifs;
   ifs.open(task_file_name);
 
+
   if (!ifs) {
     throw std::runtime_error("failed to open task file."); 
   }
-  
+
+
+  // open z3py file to write to
+  _z3_ofs = std::ofstream("../intel_task_files/_gen_z3.py", std::ios::app);
+  _z3_ofs << "from z3 import *\n";
+  _z3_ofs << "from time import process_time\n"; 
+
+
   std::string line_buf;
   var_state state;
   while (true) {
@@ -417,28 +425,29 @@ bool Solver::transpile_task_to_z3(const std::string& task_file_name) {
     std::getline(ifs, line_buf);
     pegtl::string_input in(line_buf, "task_file");
    
-    // TODO: parse
     try {
-      pegtl::parse<var_table_grammar, action>(in, state); 
+      if (pegtl::parse<var_table_grammar, action>(in, state)) {
+      
+      } else {
+        // std::cout << "can't recognize grammar.\n";
+      } 
     }
-    catch( const pegtl::parse_error& e ) {
-       const auto p = e.positions().front();
-       std::cerr << e.what() << '\n'
-                 << in.line_at( p ) << '\n'
-                 << std::setw( p.column ) << '^' << std::endl;
+    catch(const pegtl::parse_error& e) {
+      const auto p = e.positions().front();
+      std::cerr << e.what() << "\n"
+                << in.line_at(p) << "\n"
+                << std::setw(p.column) << '^' << std::endl;
+      throw std::runtime_error("error parsing string.");
     }
-
-    std::cout << "var_name: " << state.var_name << "\n";
-    std::cout << "enum_names:\n";
-    for (const auto& name : state.enum_names) {
-      std::cout << name << "\n";
-    }
+    
   }
+
+  return true;
 
 }
 
 bool Solver::transpile_task_to_dimacs(const std::string& task_file_name) {
-
+  return true;
 }
 
 }  // end of namespace qsat ---------------------------------------------------

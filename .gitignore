@@ -14,3 +14,7 @@ _deps
 # build folder
 [Bb]uild/
 [Bb]uild/*
+
+# intel task files
+intel_task_files/
+intel_task_files/*
