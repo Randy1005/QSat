@@ -219,18 +219,6 @@ size_t Solver::_propagate_constraint(int decision_depth, const std::vector<Statu
     }
 
 
-    /*
-    for (const auto& l : _clauses[cs.clause_id].literals) {
-
-      if (assignments[l._id / 2] != Status::UNDEFINED && 
-          static_cast<int>(assignments[l._id / 2]) ^ (l._id & 1)) {
-        _clauses_status[cs.clause_id] = Status::TRUE;
-        cs.is_modified = true;
-        sat_clauses_cnt++;
-        break;
-      } 
-    }
-    */
   }
 
   

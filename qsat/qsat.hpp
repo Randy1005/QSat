@@ -19,12 +19,14 @@ enum class Status {
   UNDEFINED
 };
 
+/*
 enum class VarType {
   ENUM = 0,
   ENUM_SS = 1,
   DEC_NUM,
   UNSPECIFIED
 };
+*/
 
 struct ClauseSatisfiability {
   int clause_id;
@@ -87,7 +89,7 @@ struct enum_ss_name : pegtl::seq<pegtl::string<'s', 's'>,
 
 /**
 @struct pegtl enum ss names
-concatenated with commas
+@brief enum ss names concatenated with commas
 */
 struct enum_ss_names : pegtl::seq<pegtl::star<pegtl::space>, enum_ss_name, 
                                 pegtl::star<pegtl::space>,
@@ -100,7 +102,8 @@ struct enum_ss_names : pegtl::seq<pegtl::star<pegtl::space>, enum_ss_name,
                                             enum_ss_name>> {};
 
 /**
-@struct pegtl decimal number 
+@struct pegtl decimal number
+@brief format: [digits]['d][digits]
 */
 struct dec_num : pegtl::seq<digits, pegtl::string<'\'', 'd'>, digits> {};
 
@@ -114,7 +117,8 @@ struct var_type : pegtl::sor<enum_name,
 
 /**
 @struct pegtl dash var type
-just so we don't do anything when we match the var_type
+@brief just so we don't do anything when we match the var_type
+or else a duplicated enum would be written into z3
 */
 struct dash_var_type : pegtl::seq<pegtl::star<pegtl::space>,
                                 pegtl::one<'-'>,
@@ -123,36 +127,47 @@ struct dash_var_type : pegtl::seq<pegtl::star<pegtl::space>,
 
 /**
 @struct pegtl digits preceded with spaces (guaranteed to be plain numbers) 
-@brief format:  [space*][digits],
-[digits] represent bits for BitVec
+@brief format:  [space*][digits], [digits] represent bits for BitVec
 */
 struct digits_bits : pegtl::seq<pegtl::star<pegtl::space>,
                                           digits> {};
 
-
-
-
 /**
-@struct pegtl variable table grammar
+@struct pegtl main variable table grammar
 */
 struct var_table_grammar : pegtl::seq<var_name, dash_var_type, 
                                     pegtl::sor<enum_names, 
                                               enum_ss_names,
                                               digits_bits>> {};
+/**
+@struct variable state struct to categorize parsed elements during parse time
+*/
 struct var_state {
   std::string var_name;
   std::string enum_sort_name; // it's just the uppercase var_name
   std::vector<std::string> enum_names;
   std::vector<std::string> enum_ss_names;
 
-  size_t bits; // this is based on guessing from the large task file...
-               // will need to confirm with Yi Ling
-  // ... etc
+  size_t bits; 
+  // TODO: the bits member is based on guessing from the large task file...
+  // will need to confirm with Yi Ling
+  // ... may have more to store
 };
 
+
+
+/**
+@struct action template
+*/
 template<typename Rule>
 struct action {};
 
+
+/**
+@struct dash_var_type action
+@brief when we match a enum here, it needs to be ignored 
+(pop it off the state enum member) 
+*/
 template<>
 struct action<dash_var_type> {
   template<typename ActionInput>
@@ -176,8 +191,8 @@ struct action<dash_var_type> {
 
 /**
 @struct pegtl var_name action
-@brief when we match the var_name grammar, store the var_name
-and clear enum names
+@brief when we match the var_name grammar, store the var_name, 
+store the enum sort name, and clear enum names
 */
 template<>
 struct action<var_name> {
@@ -233,6 +248,7 @@ struct action<enum_ss_name> {
 // we probably don't need this
 // since we can parse the actual enums or digits
 // and know what we should write into z3
+/*
 template<>
 struct action<var_type> {
   template<typename ActionInput>
@@ -242,6 +258,7 @@ struct action<var_type> {
     // std::cout << "I saw a var_type." << std::endl;
   }
 };
+*/
 
 
 /**
