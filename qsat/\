@@ -415,9 +415,10 @@ bool Solver::transpile_task_to_z3(const std::string& task_file_name) {
     pegtl::string_input in(line_buf, "task_file");
    
     try {
-      if (pegtl::parse<var_table_grammar, action>(in, v_state, _z3_ofs)/*||
-          pegtl::parse<or_op, action>(in, c_state, _z3_ofs)*/ ) {
+      if (pegtl::parse<var_table_grammar, action>(in, v_state, _z3_ofs) ||
+          pegtl::parse<or_op, action>(in, c_state, _z3_ofs)) {
         
+
       } else {
         // std::cout << "can't recognize grammar.\n";
       }

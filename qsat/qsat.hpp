@@ -34,6 +34,9 @@ struct ClauseSatisfiability {
   int lit_id;
 };
 
+
+
+// -------- Variable Table Grammar -------- //
 /**
 @struct pegtl variable prefix
 a single lower case v
@@ -154,6 +157,63 @@ struct var_state {
   // ... may have more to store
 };
 
+// -------- Constraint Table Grammar -------- //
+
+/**
+@struct pegtl OR operator
+@brief match the string "||"
+*/
+struct or_op : pegtl::string<'|', '|'> {};
+
+/**
+@struct pegtl comparsion operators
+*/
+// TODO: there might be more
+struct compare_op : pegtl::sor<pegtl::one<'>'>,
+                              pegtl::one<'<'>,
+                              pegtl::string<'>', '='>,
+                              pegtl::string<'<', '='>,
+                              pegtl::string<'=', '='>,
+                              pegtl::string<'!', '='>> {};
+
+/**
+@struct pegtl constraint name
+@brief format: c[digits]_[digits]
+*/
+struct constraint_name : pegtl::seq<pegtl::one<'c'>, 
+                                  digits, 
+                                  pegtl::one<'_'>,
+                                  digits> {};
+
+/**
+@struct pegtl comparison expression
+@brief format: [var_name] [compare_op] [digits | enum_name] 
+*/
+struct compare_expr : pegtl::seq<var_name,
+                                pegtl::star<pegtl::space>,
+                                compare_op, 
+                                pegtl::star<pegtl::space>,
+                                pegtl::sor<digits, 
+                                          enum_name,
+                                          enum_ss_name>> {};
+
+/**
+@struct pegtl inside expression
+@brief system verilog inside statement
+*/
+struct inside_expr : pegtl::seq<var_name,
+                              pegtl::star<pegtl::space>,
+                              pegtl::string<'i', 'n', 's', 'i', 'd', 'e'>,
+                              pegtl::star<pegtl::space>,
+                              pegtl::one<'{'>,
+                              pegtl::sor<enum_names, enum_ss_names>,
+                              pegtl::one<'}'>> {};
+
+
+
+struct constraint_state {
+  std::string test;
+};
 
 
 /**
@@ -344,6 +404,48 @@ struct action<digits_bits> {
         << "\', " << stoi(in.string()) << ")\n"; 
   }
 };
+
+
+/**
+@struct pegtl or_op action
+*/
+// TODO: doesn't parse? parse returns false?
+template<>
+struct action<or_op> {
+  template<typename ActionInput>
+  static void apply(const ActionInput& in, 
+                    constraint_state& state, 
+                    std::ofstream& ofs) {
+    std::cout << in.string() << std::endl;
+  }
+};
+
+/**
+@struct pegtl constraint name action
+*/
+template<>
+struct action<constraint_name> {
+  template<typename ActionInput>
+  static void apply(const ActionInput& in, 
+                    constraint_state& state, 
+                    std::ofstream& ofs) {
+    std::cout << in.string() << std::endl;
+  }
+};
+
+/**
+@struct pegtl constraint name action
+*/
+template<>
+struct action<compare_expr> {
+  template<typename ActionInput>
+  static void apply(const ActionInput& in, 
+                    constraint_state& state, 
+                    std::ofstream& ofs) {
+    std::cout << in.string() << std::endl;
+  }
+};
+
 
 
 /**
