@@ -412,11 +412,13 @@ bool Solver::transpile_task_to_z3(const std::string& task_file_name) {
     }
 
     std::getline(ifs, line_buf);
+    line_buf += '@';
     pegtl::string_input in(line_buf, "task_file");
    
     try {
-      if (pegtl::parse<var_table_grammar, action>(in, v_state, _z3_ofs)/*||
-          pegtl::parse<or_op, action>(in, c_state, _z3_ofs)*/ ) {
+      if (pegtl::parse<var_table_grammar, action>(in, v_state, _z3_ofs) ||
+          pegtl::parse<constraint_table_grammar, action>
+                      (in, c_state, _z3_ofs)) {
         
       } else {
         // std::cout << "can't recognize grammar.\n";
@@ -432,6 +434,14 @@ bool Solver::transpile_task_to_z3(const std::string& task_file_name) {
     }
     
   }
+
+  // finished file reading
+  // write time measurement code to z3 here
+  _z3_ofs << "end_time = 0.0\n";
+  _z3_ofs << "start_time = process_time()\n";
+  _z3_ofs << "print(s.check())\n";
+  _z3_ofs << "end_time = process_time()\n";
+  _z3_ofs << "print(\"CPU time: \" + str((end_time - start_time) * 1000.0) + \" ms.\")\n";
 
   return true;
 

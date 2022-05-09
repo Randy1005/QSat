@@ -152,8 +152,6 @@ struct var_state {
   std::vector<std::string> enum_ss_names;
 
   size_t bits; 
-  // TODO: the bits member is based on guessing from the large task file...
-  // will need to confirm with Yi Ling
   // ... may have more to store
 };
 
@@ -187,15 +185,40 @@ struct constraint_name : pegtl::seq<pegtl::one<'c'>,
 
 /**
 @struct pegtl comparison expression
-@brief format: [var_name] [compare_op] [digits | enum_name] 
+@brief format: [(] [var_name] [compare_op] [digits | enum_name | var_name] [)] 
 */
-struct compare_expr : pegtl::seq<var_name,
+struct compare_expr : pegtl::seq<pegtl::opt<pegtl::one<'('>>,
+                                var_name,
                                 pegtl::star<pegtl::space>,
                                 compare_op, 
                                 pegtl::star<pegtl::space>,
                                 pegtl::sor<digits, 
                                           enum_name,
-                                          enum_ss_name>> {};
+                                          enum_ss_name,
+                                          var_name>,
+                                pegtl::opt<pegtl::one<')'>>> {};
+
+/**
+@struct pegtl range expression
+@brief system verilog range exprssions, e.g. [0:2], [0:63]
+*/
+struct range : pegtl::seq<pegtl::one<'['>,
+                        digits,
+                        pegtl::one<':'>,
+                        digits,
+                        pegtl::one<']'>> {};
+
+/**
+@struct pegtl ranges
+*/
+struct ranges : 
+  pegtl::seq<pegtl::sor<range, digits>, 
+            pegtl::star<pegtl::space>,
+            pegtl::star<pegtl::seq<pegtl::one<','>,
+                                  pegtl::star<pegtl::space>,
+                                  pegtl::sor<range, digits>,
+                                  pegtl::star<pegtl::space>>>> {};
+
 
 /**
 @struct pegtl inside expression
@@ -206,13 +229,28 @@ struct inside_expr : pegtl::seq<var_name,
                               pegtl::string<'i', 'n', 's', 'i', 'd', 'e'>,
                               pegtl::star<pegtl::space>,
                               pegtl::one<'{'>,
-                              pegtl::sor<enum_names, enum_ss_names>,
+                              pegtl::sor<enum_names, enum_ss_names, ranges>,
                               pegtl::one<'}'>> {};
 
-
+/**
+@struct pegtl constraint table grammar
+*/
+struct constraint_table_grammar : 
+  pegtl::seq<constraint_name,
+            pegtl::star<pegtl::space>,
+            pegtl::sor<compare_expr, inside_expr>,
+            pegtl::star<pegtl::space>,
+            pegtl::star<pegtl::seq<or_op,
+                                  pegtl::star<pegtl::space>,
+                                  pegtl::sor<compare_expr, inside_expr>,
+                                  pegtl::star<pegtl::space>>>,
+            pegtl::one<'@'>> {};
 
 struct constraint_state {
-  std::string test;
+  bool is_first_constraint = true;
+  std::vector<std::string> enum_names;
+  std::vector<std::string> enum_ss_names;
+  std::string var_name;
 };
 
 
@@ -270,6 +308,15 @@ struct action<var_name> {
     state.enum_names.clear();
     state.enum_ss_names.clear();
   }
+
+  template<typename ActionInput>
+  static void apply(const ActionInput& in, 
+                    constraint_state& state, 
+                    std::ofstream& ofs) {    
+    // std::cout << "var_name: " << in.string() << std::endl;
+    state.var_name = in.string();
+  }
+
 };
 
 /**
@@ -279,13 +326,20 @@ the enum name string vector
 */
 template<>
 struct action<enum_name> {
-  template<typename actioninput>
-  static void apply(const actioninput& in, 
+  template<typename ActionInput>
+  static void apply(const ActionInput& in, 
                     var_state& state, 
                     std::ofstream& ofs) {
-    // std::cout << "i saw a enum_name." << std::endl;
     state.enum_names.push_back(in.string());
   }
+
+  template<typename ActionInput>
+  static void apply(const ActionInput& in, 
+                    constraint_state& state, 
+                    std::ofstream& ofs) {
+    state.enum_names.push_back(in.string());
+  }
+
 };
 
 /**
@@ -295,13 +349,20 @@ the enum name string vector
 */
 template<>
 struct action<enum_ss_name> {
-  template<typename actioninput>
-  static void apply(const actioninput& in, 
+  template<typename ActionInput>
+  static void apply(const ActionInput& in, 
                     var_state& state, 
                     std::ofstream& ofs) {
-    // std::cout << "i saw a enum_ss_name." << std::endl;
     state.enum_ss_names.push_back(in.string());
   }
+
+  template<typename ActionInput>
+  static void apply(const ActionInput& in, 
+                    constraint_state& state, 
+                    std::ofstream& ofs) {
+    state.enum_ss_names.push_back(in.string());
+  }
+
 };
 
 
@@ -355,6 +416,19 @@ struct action<enum_names> {
     ofs << state.var_name << " = Const(\"" << state.var_name << "\", "
         << state.enum_sort_name << ")\n";
   }
+
+  template<typename ActionInput>
+  static void apply(const ActionInput& in,
+                    constraint_state& state,
+                    std::ofstream& ofs) {
+    const size_t enum_names_size = state.enum_names.size();
+    for (size_t i = 0; i < enum_names_size; i++) {
+      ofs << state.var_name << " == " << state.enum_names[i];
+      if (i != enum_names_size - 1) {
+        ofs << ", ";
+      }
+    }  
+  }
 };
 
 template<>
@@ -385,6 +459,19 @@ struct action<enum_ss_names> {
     ofs << state.var_name << " = Const(\"" << state.var_name << "\", "
         << state.enum_sort_name << ")\n";
   }
+
+  template<typename ActionInput>
+  static void apply(const ActionInput& in,
+                    constraint_state& state,
+                    std::ofstream& ofs) {
+    const size_t enum_ss_names_size = state.enum_ss_names.size();
+    for (size_t i = 0; i < enum_ss_names_size; i++) {
+      ofs << state.var_name << " == " << state.enum_ss_names[i];
+      if (i != enum_ss_names_size - 1) {
+        ofs << ", ";
+      }
+    } 
+  }
 };
 
 
@@ -405,21 +492,6 @@ struct action<digits_bits> {
   }
 };
 
-
-/**
-@struct pegtl or_op action
-*/
-// TODO: doesn't parse? parse returns false?
-template<>
-struct action<or_op> {
-  template<typename ActionInput>
-  static void apply(const ActionInput& in, 
-                    constraint_state& state, 
-                    std::ofstream& ofs) {
-    std::cout << in.string() << std::endl;
-  }
-};
-
 /**
 @struct pegtl constraint name action
 */
@@ -429,12 +501,17 @@ struct action<constraint_name> {
   static void apply(const ActionInput& in, 
                     constraint_state& state, 
                     std::ofstream& ofs) {
-    std::cout << in.string() << std::endl;
+    if (state.is_first_constraint) {
+      ofs << "s = Solver()\n";
+      state.is_first_constraint = false;
+    }
+    ofs << "s.add(Or(";
   }
 };
 
+
 /**
-@struct pegtl constraint name action
+@struct pegtl compare_expr action
 */
 template<>
 struct action<compare_expr> {
@@ -442,9 +519,83 @@ struct action<compare_expr> {
   static void apply(const ActionInput& in, 
                     constraint_state& state, 
                     std::ofstream& ofs) {
-    std::cout << in.string() << std::endl;
+    ofs << in.string();
   }
 };
+
+/**
+@struct pegtl or_op action
+*/
+template<>
+struct action<or_op> {
+  template<typename ActionInput>
+  static void apply(const ActionInput& in, 
+                    constraint_state& state, 
+                    std::ofstream& ofs) {
+    ofs << ",";
+  }
+};
+
+/**
+@struct pegtl inside_expr action
+*/
+template<>
+struct action<inside_expr> {
+  template<typename ActionInput>
+  static void apply(const ActionInput& in, 
+                    constraint_state& state, 
+                    std::ofstream& ofs) {
+  }
+};
+
+
+/**
+@struct pegtl end of line action for constraint table
+TODO: somehow pegtl::eol doesn't work, use @ as a workaround for now
+*/
+template<>
+struct action<pegtl::one<'@'>> {
+  template<typename ActionInput>
+  static void apply(const ActionInput& in, 
+                    constraint_state& state, 
+                    std::ofstream& ofs) {
+    ofs << "))\n";
+    state.enum_ss_names.clear();
+    state.enum_names.clear();
+  }
+};
+
+
+/**
+@struct enum_names action for inside expression
+*/
+
+
+
+
+/**
+@struct enum_ss action for inside expression
+*/
+
+/**
+@struct ranges action for inside expression
+*/
+
+
+/**
+@struct pegtl constraint table grammar action
+*/
+template<>
+struct action<constraint_table_grammar> {
+  template<typename ActionInput>
+  static void apply(const ActionInput& in, 
+                    constraint_state& state, 
+                    std::ofstream& ofs) {
+    // std::cout << in.string() << std::endl;
+  }
+};
+
+
 
 
 
@@ -480,7 +631,6 @@ class Literal {
 
   private:
     size_t _id;
-
 };
 
 /**
