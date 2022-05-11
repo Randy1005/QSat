@@ -3,6 +3,7 @@
 #include <fstream>
 #include <vector>
 #include <map>
+#include <stack>
 #include <algorithm>
 #include <string>
 #include <chrono>
@@ -155,18 +156,31 @@ struct var_state {
   // ... may have more to store
 };
 
+/**
+@struct constraint state 
+*/
+struct constraint_state {
+  bool is_first_constraint = true;
+  std::vector<std::string> enum_names;
+  std::vector<std::string> enum_ss_names;
+  std::string var_name;
+  std::string compare_op;
+  std::stack<long> nums;
+};
+
+
+
 // -------- Constraint Table Grammar -------- //
 
 /**
 @struct pegtl OR operator
-@brief match the string "||"
+@brief matches the string "||"
 */
 struct or_op : pegtl::string<'|', '|'> {};
 
 /**
 @struct pegtl comparsion operators
 */
-// TODO: there might be more
 struct compare_op : pegtl::sor<pegtl::one<'>'>,
                               pegtl::one<'<'>,
                               pegtl::string<'>', '='>,
@@ -184,6 +198,25 @@ struct constraint_name : pegtl::seq<pegtl::one<'c'>,
                                   digits> {};
 
 /**
+@struct pegtl arithmetic operators
+*/
+struct arithmetic_op : 
+  pegtl::sor<pegtl::one<'+'>,
+            pegtl::one<'-'>,
+            pegtl::one<'*'>,
+            pegtl::one<'/'>> {};
+
+
+/**
+@struct pegtl arithmetic expression
+*/
+// TODO: write a grammar that parses any arithmetic expr
+// there's a whole bunch of complicated arithmetic in the
+// constraint file
+struct arithmetic_expr;
+struct ternary_expr;
+
+/**
 @struct pegtl comparison expression
 @brief format: [(] [var_name] [compare_op] [digits | enum_name | var_name] [)] 
 */
@@ -192,11 +225,13 @@ struct compare_expr : pegtl::seq<pegtl::opt<pegtl::one<'('>>,
                                 pegtl::star<pegtl::space>,
                                 compare_op, 
                                 pegtl::star<pegtl::space>,
-                                pegtl::sor<digits, 
+                                pegtl::sor<digits,
                                           enum_name,
                                           enum_ss_name,
                                           var_name>,
                                 pegtl::opt<pegtl::one<')'>>> {};
+
+
 
 /**
 @struct pegtl range expression
@@ -245,13 +280,6 @@ struct constraint_table_grammar :
                                   pegtl::sor<compare_expr, inside_expr>,
                                   pegtl::star<pegtl::space>>>,
             pegtl::one<'@'>> {};
-
-struct constraint_state {
-  bool is_first_constraint = true;
-  std::vector<std::string> enum_names;
-  std::vector<std::string> enum_ss_names;
-  std::string var_name;
-};
 
 
 /**
@@ -366,21 +394,6 @@ struct action<enum_ss_name> {
 };
 
 
-// we probably don't need this
-// since we can parse the actual enums or digits
-// and know what we should write into z3
-/*
-template<>
-struct action<var_type> {
-  template<typename ActionInput>
-  static void apply(const ActionInput& in, 
-                    var_state& state, 
-                    std::ofstream& ofs) {
-    // std::cout << "I saw a var_type." << std::endl;
-  }
-};
-*/
-
 
 /**
 @struct enum_names action
@@ -421,6 +434,10 @@ struct action<enum_names> {
   static void apply(const ActionInput& in,
                     constraint_state& state,
                     std::ofstream& ofs) {
+    // clear the num stack so we don't write the wrong
+    // stuff for inside {enums} exprs
+    state.nums = std::stack<long>();
+
     const size_t enum_names_size = state.enum_names.size();
     for (size_t i = 0; i < enum_names_size; i++) {
       ofs << state.var_name << " == " << state.enum_names[i];
@@ -464,6 +481,10 @@ struct action<enum_ss_names> {
   static void apply(const ActionInput& in,
                     constraint_state& state,
                     std::ofstream& ofs) {
+    // clear the num stack so we don't write the wrong
+    // stuff for inside {enums} exprs
+    state.nums = std::stack<long>();
+
     const size_t enum_ss_names_size = state.enum_ss_names.size();
     for (size_t i = 0; i < enum_ss_names_size; i++) {
       ofs << state.var_name << " == " << state.enum_ss_names[i];
@@ -511,6 +532,20 @@ struct action<constraint_name> {
 
 
 /**
+@struct pegtl compare_op action
+*/
+template<>
+struct action<compare_op> {
+  template<typename ActionInput>
+  static void apply(const ActionInput& in, 
+                    constraint_state& state, 
+                    std::ofstream& ofs) {
+    state.compare_op = in.string();    
+  }
+};
+
+
+/**
 @struct pegtl compare_expr action
 */
 template<>
@@ -536,17 +571,108 @@ struct action<or_op> {
   }
 };
 
+
 /**
-@struct pegtl inside_expr action
+@struct pegtl digit action
 */
 template<>
-struct action<inside_expr> {
+struct action<digits> {
   template<typename ActionInput>
   static void apply(const ActionInput& in, 
                     constraint_state& state, 
                     std::ofstream& ofs) {
+    state.nums.push(stol(in.string()));
   }
 };
+
+
+
+
+/**
+@struct pegtl { action
+@brief we know the following would be an inside expr
+followed by single numbers or range
+so we clear out the number stack
+*/
+template<>
+struct action<pegtl::one<'{'>> {
+  template<typename ActionInput>
+  static void apply(const ActionInput& in, 
+                    constraint_state& state, 
+                    std::ofstream& ofs) {
+    state.nums = std::stack<long>();
+  }
+};
+
+/**
+@struct pegtl comma action (for inside exprs)
+@brief whenever we match a comma
+we see how many numbers are in the stack
+if it's 1, that means we went past a single number
+if it's 2, that means we went past a range pair
+*/
+template<>
+struct action<pegtl::one<','>> {
+  template<typename ActionInput>
+  static void apply(const ActionInput& in, 
+                    constraint_state& state, 
+                    std::ofstream& ofs) {
+    // make sure we don't overlap with inside {enums} grammar
+    if (state.enum_names.size() == 0 && state.enum_ss_names.size() == 0) {
+      if (state.nums.size() == 2) {
+        size_t max_val = state.nums.top();
+        state.nums.pop();
+        size_t min_val = state.nums.top();
+        state.nums.pop();
+     
+        ofs << "And(" << state.var_name << " <= " << max_val << ", "
+            << state.var_name << " >= " << min_val << "), ";    
+      } else if (state.nums.size() == 1) {
+        size_t constraint_num = state.nums.top();
+        state.nums.pop();
+        ofs << state.var_name << " == " << constraint_num << ", "; 
+      }
+      
+    }
+  }
+};
+
+
+/**
+@struct pegtl } action
+@brief same as the comma action
+but we know this is the end of the inside expr
+we don't need to write a trailing comma
+*/
+template<>
+struct action<pegtl::one<'}'>> {
+  template<typename ActionInput>
+  static void apply(const ActionInput& in, 
+                    constraint_state& state, 
+                    std::ofstream& ofs) {
+    // make sure we don't overlap with inside {enums} grammar 
+    if (state.enum_names.size() == 0 && state.enum_ss_names.size() == 0) {
+
+      if (state.nums.size() == 2) {
+        size_t max_val = state.nums.top();
+        state.nums.pop();
+        size_t min_val = state.nums.top();
+        state.nums.pop();
+     
+        ofs << "And(" << state.var_name << " <= " << max_val << ", "
+            << state.var_name << " >= " << min_val << ")";    
+      } else if (state.nums.size() == 1) {
+        size_t constraint_num = state.nums.top();
+        state.nums.pop();
+        ofs << state.var_name << " == " << constraint_num; 
+      }
+
+      
+    }
+    
+  }
+};
+
 
 
 /**
@@ -564,38 +690,6 @@ struct action<pegtl::one<'@'>> {
     state.enum_names.clear();
   }
 };
-
-
-/**
-@struct enum_names action for inside expression
-*/
-
-
-
-
-/**
-@struct enum_ss action for inside expression
-*/
-
-/**
-@struct ranges action for inside expression
-*/
-
-
-/**
-@struct pegtl constraint table grammar action
-*/
-template<>
-struct action<constraint_table_grammar> {
-  template<typename ActionInput>
-  static void apply(const ActionInput& in, 
-                    constraint_state& state, 
-                    std::ofstream& ofs) {
-    // std::cout << in.string() << std::endl;
-  }
-};
-
-
 
 
 

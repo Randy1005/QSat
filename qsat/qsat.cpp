@@ -404,6 +404,7 @@ bool Solver::transpile_task_to_z3(const std::string& task_file_name) {
 
   // parse task file
   std::string line_buf;
+  std::string write_buf;
   var_state v_state;
   constraint_state c_state;
   while (true) {
@@ -412,8 +413,10 @@ bool Solver::transpile_task_to_z3(const std::string& task_file_name) {
     }
 
     std::getline(ifs, line_buf);
+
     line_buf += '@';
     pegtl::string_input in(line_buf, "task_file");
+
    
     try {
       if (pegtl::parse<var_table_grammar, action>(in, v_state, _z3_ofs) ||
