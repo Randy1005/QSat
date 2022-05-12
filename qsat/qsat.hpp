@@ -73,6 +73,7 @@ struct enum_name : pegtl::seq<enum_prefix, digits, pegtl::one<'_'>, digits> {};
 @struct pegtl enum_names
 concatenated with commas
 */
+// TODO: use pegtl::list
 struct enum_names : pegtl::seq<pegtl::star<pegtl::space>, enum_name, 
                               pegtl::star<pegtl::space>,
                               pegtl::one<','>,
@@ -95,6 +96,8 @@ struct enum_ss_name : pegtl::seq<pegtl::string<'s', 's'>,
 @struct pegtl enum ss names
 @brief enum ss names concatenated with commas
 */
+
+// TODO: use pegtl::list
 struct enum_ss_names : pegtl::seq<pegtl::star<pegtl::space>, enum_ss_name, 
                                 pegtl::star<pegtl::space>,
                                 pegtl::one<','>,
@@ -136,13 +139,6 @@ struct dash_var_type : pegtl::seq<pegtl::star<pegtl::space>,
 struct digits_bits : pegtl::seq<pegtl::star<pegtl::space>,
                                           digits> {};
 
-/**
-@struct pegtl main variable table grammar
-*/
-struct var_table_grammar : pegtl::seq<var_name, dash_var_type, 
-                                    pegtl::sor<enum_names, 
-                                              enum_ss_names,
-                                              digits_bits>> {};
 /**
 @struct variable state struct to categorize parsed elements during parse time
 */
@@ -218,7 +214,7 @@ struct ternary_expr;
 
 /**
 @struct pegtl comparison expression
-@brief format: [(] [var_name] [compare_op] [digits | enum_name | var_name] [)] 
+@brief format: [(] [var_name] [compare_op] [digits | var_name] [)] 
 */
 struct compare_expr : pegtl::seq<pegtl::opt<pegtl::one<'('>>,
                                 var_name,
@@ -226,11 +222,28 @@ struct compare_expr : pegtl::seq<pegtl::opt<pegtl::one<'('>>,
                                 compare_op, 
                                 pegtl::star<pegtl::space>,
                                 pegtl::sor<digits,
-                                          enum_name,
-                                          enum_ss_name,
                                           var_name>,
                                 pegtl::opt<pegtl::one<')'>>> {};
 
+/**
+@struct pegtl comparison expr : enum_name
+*/
+struct compare_expr_enum_name :
+  pegtl::seq<var_name,
+            pegtl::star<pegtl::space>,
+            compare_op,
+            pegtl::star<pegtl::space>,
+            enum_name> {};
+
+/**
+@struct pegtl comparison expr : enum_ss_name
+*/
+struct compare_expr_enum_ss_name :
+  pegtl::seq<var_name,
+            pegtl::star<pegtl::space>,
+            compare_op,
+            pegtl::star<pegtl::space>,
+            enum_ss_name> {};
 
 
 /**
@@ -254,6 +267,20 @@ struct ranges :
                                   pegtl::sor<range, digits>,
                                   pegtl::star<pegtl::space>>>> {};
 
+/**
+@struct miscellaneous ranges or numbers
+*/
+struct misc_ranges_nums :
+  pegtl::list<pegtl::sor<range, digits>, pegtl::one<','>> {};
+
+/**
+@struct pegtl miscellaneous enum names
+@brief a combination of enum_ss_names, or enum_names
+they can be written in the same inside expression
+*/
+struct misc_enums :
+  pegtl::list<pegtl::sor<enum_ss_name, enum_name>, pegtl::one<','>> {};
+
 
 /**
 @struct pegtl inside expression
@@ -264,8 +291,30 @@ struct inside_expr : pegtl::seq<var_name,
                               pegtl::string<'i', 'n', 's', 'i', 'd', 'e'>,
                               pegtl::star<pegtl::space>,
                               pegtl::one<'{'>,
-                              pegtl::sor<enum_names, enum_ss_names, ranges>,
+                              pegtl::sor<misc_enums, misc_ranges_nums>,
                               pegtl::one<'}'>> {};
+/**
+@struct constraint separator
+*/
+struct constraint_sep :
+  pegtl::seq<pegtl::star<pegtl::space>,
+            or_op,
+            pegtl::star<pegtl::space>> {};
+
+/**
+@struct expression
+*/
+struct expr :
+  pegtl::sor<inside_expr,
+            compare_expr_enum_ss_name,
+            compare_expr_enum_name,
+            compare_expr> {};
+/**
+@struct expression list
+*/
+struct expr_list :
+  pegtl::list<expr, constraint_sep> {};
+
 
 /**
 @struct pegtl constraint table grammar
@@ -273,13 +322,19 @@ struct inside_expr : pegtl::seq<var_name,
 struct constraint_table_grammar : 
   pegtl::seq<constraint_name,
             pegtl::star<pegtl::space>,
-            pegtl::sor<compare_expr, inside_expr>,
-            pegtl::star<pegtl::space>,
-            pegtl::star<pegtl::seq<or_op,
-                                  pegtl::star<pegtl::space>,
-                                  pegtl::sor<compare_expr, inside_expr>,
-                                  pegtl::star<pegtl::space>>>,
+            expr_list,
             pegtl::one<'@'>> {};
+/**
+@struct pegtl main variable table grammar
+*/
+struct var_table_grammar : 
+  pegtl::seq<var_name, 
+            dash_var_type,
+            pegtl::star<pegtl::space>,
+            pegtl::sor<misc_enums,
+                    /*enum_names, 
+                      enum_ss_names,*/
+                      digits_bits>> {};
 
 
 /**
@@ -299,7 +354,7 @@ struct action<dash_var_type> {
   template<typename ActionInput>
   static void apply(const ActionInput& in, 
                     var_state& state, 
-                    std::ofstream& ofs) {    
+                    std::stringstream& ss) {    
     // std::cout << "matched dash var type " << in.string() << std::endl;
     // pop the unnecessary enum name
     if (!state.enum_names.empty()) {
@@ -314,7 +369,6 @@ struct action<dash_var_type> {
 
 
 
-
 /**
 @struct pegtl var_name action
 @brief when we match the var_name grammar, store the var_name, 
@@ -325,23 +379,19 @@ struct action<var_name> {
   template<typename ActionInput>
   static void apply(const ActionInput& in, 
                     var_state& state, 
-                    std::ofstream& ofs) {    
-    // std::cout << "var_name: " << in.string() << std::endl;
+                    std::stringstream& ss) {    
     state.var_name = in.string();
     
     std::string s(state.var_name);
-    s[0] = toupper(s[0]);
+    s[0] = 'E';
     state.enum_sort_name = s;
     
-    state.enum_names.clear();
-    state.enum_ss_names.clear();
   }
 
   template<typename ActionInput>
   static void apply(const ActionInput& in, 
                     constraint_state& state, 
-                    std::ofstream& ofs) {    
-    // std::cout << "var_name: " << in.string() << std::endl;
+                    std::stringstream& ss) {    
     state.var_name = in.string();
   }
 
@@ -357,14 +407,14 @@ struct action<enum_name> {
   template<typename ActionInput>
   static void apply(const ActionInput& in, 
                     var_state& state, 
-                    std::ofstream& ofs) {
+                    std::stringstream& ss) {
     state.enum_names.push_back(in.string());
   }
 
   template<typename ActionInput>
   static void apply(const ActionInput& in, 
                     constraint_state& state, 
-                    std::ofstream& ofs) {
+                    std::stringstream& ss) {
     state.enum_names.push_back(in.string());
   }
 
@@ -380,14 +430,15 @@ struct action<enum_ss_name> {
   template<typename ActionInput>
   static void apply(const ActionInput& in, 
                     var_state& state, 
-                    std::ofstream& ofs) {
+                    std::stringstream& ss) {
+    // we're using a predefined E_SS enum now
     state.enum_ss_names.push_back(in.string());
   }
 
   template<typename ActionInput>
   static void apply(const ActionInput& in, 
                     constraint_state& state, 
-                    std::ofstream& ofs) {
+                    std::stringstream& ss) {
     state.enum_ss_names.push_back(in.string());
   }
 
@@ -405,47 +456,59 @@ struct action<enum_names> {
   template<typename ActionInput>
   static void apply(const ActionInput& in, 
                     var_state& state, 
-                    std::ofstream& ofs) {
-    
+                    std::stringstream& ss) {
     // EnumSort definition
-    ofs << state.enum_sort_name << ", (";
+    ss << state.enum_sort_name << ", (";
     const size_t enum_names_size = state.enum_names.size();
     for (size_t i = 0; i < enum_names_size; i++) {
-      ofs << state.enum_names[i];
+      ss << state.enum_names[i];
       if (i != enum_names_size - 1) {
-        ofs << ", ";
+        ss << ", ";
       }
     }
-    ofs << ") = EnumSort(\'" << state.enum_sort_name << "\', [";
+    ss << ") = EnumSort(\'" << state.enum_sort_name << "\', [";
     for (size_t i = 0; i < enum_names_size; i++) {
-      ofs << "\'" << state.enum_names[i] << "\'";
+      ss << "\'" << state.enum_names[i] << "\'";
       if (i != enum_names_size - 1) {
-        ofs << ", ";
+        ss << ", ";
       }
     }
-    ofs << "])\n";
+    ss << "])\n";
 
-    // declare the actual enum sort in z3
-    ofs << state.var_name << " = Const(\"" << state.var_name << "\", "
-        << state.enum_sort_name << ")\n";
+    // declare the PackedVar object in z3
+    // 1st argument: a const of the enumsort type we just defined
+    // 2nd argument: a const of the predefined type 'E_SS'
+    ss << state.var_name << " = PackedVar(Const(\"" << "enum_" 
+       << state.var_name << "\", " << state.enum_sort_name 
+       << "), Const(\"" << "common_val_"
+       << state.var_name << "\", E_SS))\n";
+  
+  
+    state.enum_ss_names.clear();
+    state.enum_names.clear();
   }
-
+ 
+  /*
   template<typename ActionInput>
   static void apply(const ActionInput& in,
                     constraint_state& state,
-                    std::ofstream& ofs) {
+                    std::stringstream& ss) {
     // clear the num stack so we don't write the wrong
     // stuff for inside {enums} exprs
     state.nums = std::stack<long>();
+    
+    std::cout << "matched enum_names\n";
+    std::cout << "enum size:" << state.enum_names.size() << std::endl;
 
     const size_t enum_names_size = state.enum_names.size();
     for (size_t i = 0; i < enum_names_size; i++) {
-      ofs << state.var_name << " == " << state.enum_names[i];
+      ss << state.var_name << ".enum == " << state.enum_names[i];
       if (i != enum_names_size - 1) {
-        ofs << ", ";
+        ss << ", ";
       }
     }  
   }
+  */
 };
 
 template<>
@@ -453,48 +516,139 @@ struct action<enum_ss_names> {
   template<typename ActionInput>
   static void apply(const ActionInput& in,
                     var_state& state,
-                    std::ofstream& ofs) {
+                    std::stringstream& ss) {
     // EnumSort definition
-    ofs << state.enum_sort_name << ", (";
+    // Can't define it like this cuz z3 doesn't 
+    // allow enum with same names
+    // should predefine one enum_ss sort
+    // and all vars would be a Const of
+    // that type
+    /*
+    ss << state.enum_sort_name << ", (";
     const size_t enum_ss_names_size = state.enum_ss_names.size();
     for (size_t i = 0; i < enum_ss_names_size; i++) {
-      ofs << state.enum_ss_names[i];
+      ss << state.enum_ss_names[i];
       if (i != enum_ss_names_size - 1) {
-        ofs << ", ";
+        ss << ", ";
       }
     }
-    ofs << ") = EnumSort(\'" << state.enum_sort_name << "\', [";
+    ss << ") = EnumSort(\'" << state.enum_sort_name << "\', [";
     for (size_t i = 0; i < enum_ss_names_size; i++) {
-      ofs << "\'" << state.enum_ss_names[i] << "\'";
+      ss << "\'" << state.enum_ss_names[i] << "\'";
       if (i != enum_ss_names_size - 1) {
-        ofs << ", ";
+        ss << ", ";
       }
     }
-    ofs << "])\n";
+    ss << "])\n";
 
     // declare the actual enum sort in z3
-    ofs << state.var_name << " = Const(\"" << state.var_name << "\", "
+    ss << state.var_name << " = Const(\"" << state.var_name << "\", "
         << state.enum_sort_name << ")\n";
+    */
+
+    // declare the PackedVar object in z3
+    // 1st argument: None (because this var has no enum type) 
+    // 2nd argument: a const of the predefined type 'E_SS'
+    ss << state.var_name << " = PackedVar(None, Const(\"common_val_"
+       << state.var_name << "\", E_SS))\n";
+    
+    state.enum_names.clear();
+    state.enum_ss_names.clear();
   }
 
+  /*
   template<typename ActionInput>
   static void apply(const ActionInput& in,
                     constraint_state& state,
-                    std::ofstream& ofs) {
+                    std::stringstream& ss) {
     // clear the num stack so we don't write the wrong
     // stuff for inside {enums} exprs
     state.nums = std::stack<long>();
 
     const size_t enum_ss_names_size = state.enum_ss_names.size();
     for (size_t i = 0; i < enum_ss_names_size; i++) {
-      ofs << state.var_name << " == " << state.enum_ss_names[i];
+      ss << state.var_name << ".common_val == " << state.enum_ss_names[i];
       if (i != enum_ss_names_size - 1) {
-        ofs << ", ";
+        ss << ", ";
       }
-    } 
+    }
   }
+  */
 };
 
+/**
+@struct misc enums action : for var table
+some enum var definition has both enum and common value
+defined, we handle them with the misc enum grammar
+*/
+template<>
+struct action<misc_enums> {
+  template<typename ActionInput>
+  static void apply(const ActionInput& in, 
+                    var_state& state, 
+                    std::stringstream& ss) {
+    const auto enum_names_size = state.enum_names.size();
+    const auto enum_ss_size = state.enum_ss_names.size();
+    
+    if (enum_names_size != 0) {
+      // we write the full enum sort definition:
+      // E_N = EnumSort(...)
+      // v = PackedVar(Const(E_N), Const(E_SS))
+
+      // EnumSort definition
+      ss << state.enum_sort_name << ", (";
+      const size_t enum_names_size = state.enum_names.size();
+      for (size_t i = 0; i < enum_names_size; i++) {
+        ss << state.enum_names[i];
+        if (i != enum_names_size - 1) {
+          ss << ", ";
+        }
+      }
+
+      // if there's only a single value
+      // in the enum, we add a dummy value
+      // because z3 doesn't allow single value enum
+      // TODO: not sure if this is okay to do
+      if (enum_names_size == 1) {
+        ss << ", s_" << state.var_name << "_dummy";
+      }
+
+      ss << ") = EnumSort(\'" << state.enum_sort_name << "\', [";
+      for (size_t i = 0; i < enum_names_size; i++) {
+        ss << "\'" << state.enum_names[i] << "\'";
+        if (i != enum_names_size - 1) {
+          ss << ", ";
+        }
+      }
+      
+      // if there's only a single value
+      // in the enum, we add a dummy value
+      // because z3 doesn't allow single value enum
+      // TODO: not sure if this is okay to do
+      if (enum_names_size == 1) {
+        ss << ", \'s_" << state.var_name << "_dummy\'";
+      }
+
+      ss << "])\n";
+
+      // declare the PackedVar object in z3
+      // 1st argument: a const of the enumsort type we just defined
+      // 2nd argument: a const of the predefined type 'E_SS'
+      ss << state.var_name << " = PackedVar(Const(\"" << "enum_" 
+         << state.var_name << "\", " << state.enum_sort_name 
+         << "), Const(\"" << "common_val_"
+         << state.var_name << "\", E_SS))\n";
+    
+    } else {
+      // we write None for the PackedVar enum member
+       ss << state.var_name << " = PackedVar(None, Const(\"common_val_"
+          << state.var_name << "\", E_SS))\n";
+    }
+
+    state.enum_ss_names.clear();
+    state.enum_names.clear();
+  }
+};
 
 /**
 @struct pegtl digits_bits action
@@ -505,10 +659,10 @@ struct action<digits_bits> {
   template<typename ActionInput>
   static void apply(const ActionInput& in, 
                     var_state& state, 
-                    std::ofstream& ofs) {
+                    std::stringstream& ss) {
 
     // write BitVec definition to z3
-    ofs << state.var_name << " = BitVec(\'" << state.var_name
+    ss << state.var_name << " = BitVec(\'" << state.var_name
         << "\', " << stoi(in.string()) << ")\n"; 
   }
 };
@@ -521,12 +675,15 @@ struct action<constraint_name> {
   template<typename ActionInput>
   static void apply(const ActionInput& in, 
                     constraint_state& state, 
-                    std::ofstream& ofs) {
+                    std::stringstream& ss) {
     if (state.is_first_constraint) {
-      ofs << "s = Solver()\n";
+      ss << "s = Solver()\n";
       state.is_first_constraint = false;
     }
-    ofs << "s.add(Or(";
+
+    
+    ss << "# " << in.string() << "\n";
+    ss << "s.add(Or(";
   }
 };
 
@@ -539,7 +696,7 @@ struct action<compare_op> {
   template<typename ActionInput>
   static void apply(const ActionInput& in, 
                     constraint_state& state, 
-                    std::ofstream& ofs) {
+                    std::stringstream& ss) {
     state.compare_op = in.string();    
   }
 };
@@ -553,10 +710,45 @@ struct action<compare_expr> {
   template<typename ActionInput>
   static void apply(const ActionInput& in, 
                     constraint_state& state, 
-                    std::ofstream& ofs) {
-    ofs << in.string();
+                    std::stringstream& ss) {
+    ss << in.string();
   }
 };
+
+/**
+@struct pegtl compare_expr_enum_name action
+*/
+template<>
+struct action<compare_expr_enum_name> {
+  template<typename ActionInput>
+  static void apply(const ActionInput& in, 
+                    constraint_state& state, 
+                    std::stringstream& ss) {
+    ss << state.var_name << ".enum "
+       << state.compare_op << " "
+       << state.enum_names.back();
+  
+    state.enum_names.clear();
+  }
+};
+
+/**
+@struct pegtl compare_expr_enum_ss_name action
+*/
+template<>
+struct action<compare_expr_enum_ss_name> {
+  template<typename ActionInput>
+  static void apply(const ActionInput& in, 
+                    constraint_state& state, 
+                    std::stringstream& ss) {
+    ss << state.var_name << ".common_val "
+       << state.compare_op << " "
+       << state.enum_ss_names.back();
+  
+    state.enum_ss_names.clear();
+  }
+};
+
 
 /**
 @struct pegtl or_op action
@@ -566,8 +758,8 @@ struct action<or_op> {
   template<typename ActionInput>
   static void apply(const ActionInput& in, 
                     constraint_state& state, 
-                    std::ofstream& ofs) {
-    ofs << ",";
+                    std::stringstream& ss) {
+    ss << ", ";
   }
 };
 
@@ -580,7 +772,7 @@ struct action<digits> {
   template<typename ActionInput>
   static void apply(const ActionInput& in, 
                     constraint_state& state, 
-                    std::ofstream& ofs) {
+                    std::stringstream& ss) {
     state.nums.push(stol(in.string()));
   }
 };
@@ -589,18 +781,21 @@ struct action<digits> {
 
 
 /**
-@struct pegtl { action
+@struct pegtl "inside" action
 @brief we know the following would be an inside expr
-followed by single numbers or range
+followed by single numbers or range or enums
 so we clear out the number stack
 */
 template<>
-struct action<pegtl::one<'{'>> {
+struct action<pegtl::string<'i', 'n', 's', 'i', 'd', 'e'>> {
   template<typename ActionInput>
   static void apply(const ActionInput& in, 
                     constraint_state& state, 
-                    std::ofstream& ofs) {
+                    std::stringstream& ss) {
     state.nums = std::stack<long>();
+    
+    state.enum_names.clear();
+    state.enum_ss_names.clear();
   }
 };
 
@@ -616,24 +811,26 @@ struct action<pegtl::one<','>> {
   template<typename ActionInput>
   static void apply(const ActionInput& in, 
                     constraint_state& state, 
-                    std::ofstream& ofs) {
-    // make sure we don't overlap with inside {enums} grammar
-    if (state.enum_names.size() == 0 && state.enum_ss_names.size() == 0) {
+                    std::stringstream& ss) {
+    //std::cout << "enum size:" << state.enum_names.size() << std::endl;
+    //std::cout << "enum_ss size:" << state.enum_ss_names.size() << std::endl;
+    if (state.enum_names.size() == 0 &&
+        state.enum_ss_names.size() == 0) { 
       if (state.nums.size() == 2) {
-        size_t max_val = state.nums.top();
+        long max_val = state.nums.top();
         state.nums.pop();
-        size_t min_val = state.nums.top();
+        long min_val = state.nums.top();
         state.nums.pop();
      
-        ofs << "And(" << state.var_name << " <= " << max_val << ", "
+        ss << "And(" << state.var_name << " <= " << max_val << ", "
             << state.var_name << " >= " << min_val << "), ";    
       } else if (state.nums.size() == 1) {
-        size_t constraint_num = state.nums.top();
+        long constraint_num = state.nums.top();
         state.nums.pop();
-        ofs << state.var_name << " == " << constraint_num << ", "; 
+        ss << state.var_name << " == " << constraint_num << ", "; 
       }
-      
     }
+    
   }
 };
 
@@ -641,7 +838,7 @@ struct action<pegtl::one<','>> {
 /**
 @struct pegtl } action
 @brief same as the comma action
-but we know this is the end of the inside expr
+we know this is the end of the inside expr
 we don't need to write a trailing comma
 */
 template<>
@@ -649,27 +846,55 @@ struct action<pegtl::one<'}'>> {
   template<typename ActionInput>
   static void apply(const ActionInput& in, 
                     constraint_state& state, 
-                    std::ofstream& ofs) {
-    // make sure we don't overlap with inside {enums} grammar 
-    if (state.enum_names.size() == 0 && state.enum_ss_names.size() == 0) {
-
+                    std::stringstream& ss) {
+    //std::cout << "enum size:" << state.enum_names.size() << std::endl;
+    //std::cout << "enum_ss size:" << state.enum_ss_names.size() << std::endl;
+    if (state.enum_names.size() == 0 &&
+        state.enum_ss_names.size() == 0) {
       if (state.nums.size() == 2) {
         size_t max_val = state.nums.top();
         state.nums.pop();
         size_t min_val = state.nums.top();
         state.nums.pop();
      
-        ofs << "And(" << state.var_name << " <= " << max_val << ", "
+        ss << "And(" << state.var_name << " <= " << max_val << ", "
             << state.var_name << " >= " << min_val << ")";    
       } else if (state.nums.size() == 1) {
         size_t constraint_num = state.nums.top();
         state.nums.pop();
-        ofs << state.var_name << " == " << constraint_num; 
+        ss << state.var_name << " == " << constraint_num; 
+      }    
+    } else {
+      // if we're here
+      // we've read in some misc enums, write them to z3
+      // note that depending on it's 
+      // 2. no enum ss names were readenum or
+      // common value, we write different things to z3
+      const auto enum_names_size = state.enum_names.size();
+      const auto enum_ss_names_size = state.enum_ss_names.size();
+      for (size_t i = 0; i < enum_names_size; i++) {
+        ss << state.var_name << ".enum == "
+           << state.enum_names[i];
+        if (i != enum_names_size - 1) {
+          ss << ", ";
+        }
+      }
+      
+      // don't write this comma if:
+      // 1. no enum names were read
+      // 2. no enum ss names were read
+      if (enum_ss_names_size != 0 && enum_names_size != 0) {
+        ss << ", ";
       }
 
-      
+      for (size_t i = 0; i < enum_ss_names_size; i++) {
+        ss << state.var_name << ".common_val == "
+           << state.enum_ss_names[i];
+        if (i != enum_ss_names_size - 1) {
+          ss << ", ";
+        }
+      }
     }
-    
   }
 };
 
@@ -684,13 +909,48 @@ struct action<pegtl::one<'@'>> {
   template<typename ActionInput>
   static void apply(const ActionInput& in, 
                     constraint_state& state, 
-                    std::ofstream& ofs) {
-    ofs << "))\n";
+                    std::stringstream& ss) {
+    ss << "))\n";
     state.enum_ss_names.clear();
     state.enum_names.clear();
   }
 };
 
+
+/*
+template<>
+struct action<expr_list> {
+  template<typename ActionInput>
+  static void apply(const ActionInput& in, 
+                    constraint_state& state, 
+                    std::stringstream& ss) {
+    std::cout << "matched expr list\n";
+    std::cout << in.string() << std::endl;
+  }
+};
+
+template<>
+struct action<test> {
+  template<typename ActionInput>
+  static void apply(const ActionInput& in, 
+                    constraint_state& state, 
+                    std::stringstream& ss) {
+    std::cout << "matched test\n";
+    std::cout << in.string() << std::endl;
+  }
+};
+
+template<>
+struct action<constraint_sep> {
+  template<typename ActionInput>
+  static void apply(const ActionInput& in, 
+                    constraint_state& state, 
+                    std::stringstream& ss) {
+    std::cout << "matched separator\n";
+    std::cout << in.string() << std::endl;
+  }
+};
+*/
 
 
 /**

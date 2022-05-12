@@ -1,5 +1,6 @@
 #include <cmath>
 #include <iomanip>
+#include <sstream>
 #include "qsat.hpp"
 
 namespace qsat {
@@ -404,9 +405,32 @@ bool Solver::transpile_task_to_z3(const std::string& task_file_name) {
 
   // parse task file
   std::string line_buf;
-  std::string write_buf;
+  std::stringstream write_ss;
   var_state v_state;
   constraint_state c_state;
+  long recog_cnt = 0;
+  long unrecog_cnt = 0;
+  
+  // predefine packed var
+  // a PackedVar object has:
+  // 1. an enum member
+  // 2. a common value member
+  // P.S. if some variables only have a common value specified
+  // we can set the enum member as None
+  _z3_ofs << "class PackedVar:\n"
+          << "\tdef __init__(self,enum,common_val):\n"
+          << "\t\tself.enum = enum\n"
+          << "\t\tself.common_val = common_val\n\n\n";
+
+
+  // predefine common values enum sort in z3
+  // we only need to define this once
+  // so do it here
+  // probabaly only need up to ss_3?
+  _z3_ofs << "E_SS, (ss_0,ss_1,ss_2,ss_3,ss_4,ss_5) "
+          << "= EnumSort(\'E_SS\', "
+          << "['ss_0','ss_1','ss_2','ss_3','ss_4','ss_5'])\n";
+  
   while (true) {
     if (ifs.eof()) {
       break;
@@ -416,16 +440,20 @@ bool Solver::transpile_task_to_z3(const std::string& task_file_name) {
 
     line_buf += '@';
     pegtl::string_input in(line_buf, "task_file");
-
-   
+    
     try {
-      if (pegtl::parse<var_table_grammar, action>(in, v_state, _z3_ofs) ||
+      if (pegtl::parse<var_table_grammar, action>(in, v_state, write_ss) ||
           pegtl::parse<constraint_table_grammar, action>
-                      (in, c_state, _z3_ofs)) {
-        
+                      (in, c_state, write_ss)) {
+        recog_cnt++; 
+        _z3_ofs << write_ss.str();
+
       } else {
-        // std::cout << "can't recognize grammar.\n";
+        unrecog_cnt++;
       }
+
+      // clear out the stringstream buffer
+      write_ss.str("");
 
     }
     catch(const pegtl::parse_error& e) {
@@ -445,6 +473,11 @@ bool Solver::transpile_task_to_z3(const std::string& task_file_name) {
   _z3_ofs << "print(s.check())\n";
   _z3_ofs << "end_time = process_time()\n";
   _z3_ofs << "print(\"CPU time: \" + str((end_time - start_time) * 1000.0) + \" ms.\")\n";
+
+  
+  std::cout << "recog grammar: " << recog_cnt << std::endl;
+  std::cout << "unrecog grammar: " << unrecog_cnt << std::endl;
+
 
   return true;
 
