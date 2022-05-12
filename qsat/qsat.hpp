@@ -662,8 +662,18 @@ struct action<digits_bits> {
                     std::stringstream& ss) {
 
     // write BitVec definition to z3
+    // define it to be the max BitVec in whole file (seems to be 50?)
+    // and manually constrain the min max value
+    // as z3 doesn't allow comparison between
+    // BitVecs with different size
     ss << state.var_name << " = BitVec(\'" << state.var_name
-        << "\', " << stoi(in.string()) << ")\n"; 
+        << "\', 50)\n";
+    
+    // TODO: since we only have max size of 50 bits
+    // would it be faster to just build a lookup table?
+    ss << "s.add(" << state.var_name << " >= 0, "
+       << state.var_name << " <= " << pow(2, stoi(in.string()))
+       << ")\n";
   }
 };
 
@@ -676,12 +686,6 @@ struct action<constraint_name> {
   static void apply(const ActionInput& in, 
                     constraint_state& state, 
                     std::stringstream& ss) {
-    if (state.is_first_constraint) {
-      ss << "s = Solver()\n";
-      state.is_first_constraint = false;
-    }
-
-    
     ss << "# " << in.string() << "\n";
     ss << "s.add(Or(";
   }

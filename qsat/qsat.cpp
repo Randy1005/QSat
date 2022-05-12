@@ -402,6 +402,7 @@ bool Solver::transpile_task_to_z3(const std::string& task_file_name) {
   _z3_ofs = std::ofstream("../intel_task_files/_gen_z3.py", std::ios::trunc);
   _z3_ofs << "from z3 import *\n";
   _z3_ofs << "from time import process_time\n"; 
+  _z3_ofs << "s = Solver()\n";
 
   // parse task file
   std::string line_buf;
@@ -418,9 +419,9 @@ bool Solver::transpile_task_to_z3(const std::string& task_file_name) {
   // P.S. if some variables only have a common value specified
   // we can set the enum member as None
   _z3_ofs << "class PackedVar:\n"
-          << "\tdef __init__(self,enum,common_val):\n"
-          << "\t\tself.enum = enum\n"
-          << "\t\tself.common_val = common_val\n\n\n";
+          << "  def __init__(self,enum,common_val):\n"
+          << "    self.enum = enum\n"
+          << "    self.common_val = common_val\n\n\n";
 
 
   // predefine common values enum sort in z3
