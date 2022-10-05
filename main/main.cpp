@@ -4,7 +4,7 @@
 
 int main(int argc, char* argv[]) {
   if (argc != 2) {
-    std::cerr << "Usage: ./QSat task_file.task" << std::endl;
+    std::cerr << "Usage: ./QSat cnf_file" << std::endl;
     std::exit(EXIT_FAILURE);
   }
  
@@ -14,7 +14,11 @@ int main(int argc, char* argv[]) {
 
   start_time = std::chrono::steady_clock::now(); 
 
-  bool res = solver.transpile_task_to_z3(argv[1]);  
+  
+  qsat::Literal a(1), b(-7), c(9);
+  qsat::Solver s;
+  s.add_clause({a});
+  s.add_clause({b, c});
 
   end_time = std::chrono::steady_clock::now(); 
 
