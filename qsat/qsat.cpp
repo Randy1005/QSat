@@ -28,7 +28,6 @@ Clause::Clause(std::vector<Literal>&& lits) :
 Solver::Solver() :
   _order_heap(VarOrderLt(_activities))
 {
-
 }
 
 void Solver::read_dimacs(const std::string& inputFileName) {
@@ -76,7 +75,6 @@ void Solver::_read_clause(int variable, std::vector<Literal>& lits) {
 }
 
 void Solver::add_clause(std::vector<Literal>&& lits) {
-  
   // resize the assignment vector to the current largest variable
   int max = 0;
 
@@ -98,7 +96,6 @@ void Solver::add_clause(std::vector<Literal>&& lits) {
 }
 
 void Solver::add_clause(const std::vector<Literal>& lits) {
- 
   // resize the assignment vector to the current largest variable
   int max = 0;
 
@@ -229,7 +226,16 @@ void Solver::_insert_var_order(int v) {
 
 void Solver::_new_var(int v) {
   _activities.resize(num_variables());
+  // initialize activities[v] to 0.0
   _activities[v] = 0;
+
+  // TODO: should consider placing _assigns.resize
+  // here too, for consistency
+  // initialize _assigns[v] to undefined
+  _assigns[v] = Status::UNDEFINED;
+
+  // initialize var info
+  _var_info.resize(num_variables());
   
   // insert this var into order heap
   _insert_var_order(v);
@@ -241,7 +247,6 @@ void Solver::reset() {
 }
 
 bool Solver::solve() {
-  _init();
 
 }
 

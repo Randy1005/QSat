@@ -17,11 +17,17 @@
 
 namespace qsat {
 
+struct Clause;
+struct Literal;
+struct VarInfo;
+
+
 enum class Status {
   FALSE = 0,
   TRUE  = 1,
   UNDEFINED
 };
+
 
 /**
 @struct Literal
@@ -61,12 +67,16 @@ struct Literal {
   int id;
 };
 
+// constant for representing undefined literal
+const Literal lit_undef = {-1};
+
+
 /**
  * utility inline methods
  * var(lit), ~lit, signed(lit), etc.
  */
 inline Literal operator ~(const Literal& p) {
-  Literal q(0);
+  Literal q(p.id);
   q.id = p.id ^ 1;
   return q;
 }
@@ -99,15 +109,42 @@ struct Clause {
   /**
   @brief default copy assignment operator
   */
-  Clause& operator=(const Clause& rhs) = delete;
+  Clause& operator=(const Clause& rhs) = default;
 
   /**
   @brief default move assignment operator
   */
   Clause& operator=(Clause&& rhs) = default;
 
+  // TODO: implement == operator?
+
   std::vector<Literal> literals;
 };
+
+const Clause cla_undef({lit_undef});
+
+
+/**
+ * @struct VarInfo
+ * @brief stores a variable's reason clause
+ * and its decision level
+ */
+struct VarInfo {
+  VarInfo() = default;
+
+  VarInfo(const Clause& c, int lvl) :
+    reason(c),
+    decision_level(lvl)
+  {
+  }
+
+
+
+  Clause reason;
+  int decision_level;
+};
+
+
 
 /**
 @class Solver
@@ -172,6 +209,16 @@ public:
   size_t n_assigns() const { 
     return _trail.size(); 
   }
+  
+  size_t decision_level() const {
+    return _trail.size();
+  }
+
+  // TODO: this shouldn't be a public interface
+  // but I need this to unit test liteal op functionalities
+  void assign(int v, bool val) {
+    _assigns[v] = val ? Status::TRUE : Status::FALSE;
+  }
 
   /**
    * @brief value
@@ -204,9 +251,22 @@ public:
    * else store this new fact, update assignment, trail, etc.
    */
   inline bool enqueue(Literal& p, Clause& from) {
-
+     
   }
 
+  inline bool unchecked_enqueue(Literal &p, Clause& from) {
+    assert(value(p) != Status::UNDEFINED);
+
+    // make the assignment, so this literal
+    // evaluates to true
+    _assigns[var(p)] = static_cast<Status>(!sign(p)); 
+    
+    // store decision level and reason clause
+    _var_info[var(p)] = VarInfo{from, static_cast<int>(decision_level())};
+  
+    // push this literal into trail
+    _trail.push_back(p);
+  }
 
 
   void reset();
@@ -258,7 +318,11 @@ private:
   
   // heuristic activities for variables
   std::vector<double> _activities;
-  
+ 
+  // var info vector (reason, decision level)
+  std::vector<VarInfo> _var_info;
+
+
   // priority queue 
   // for selecting var with max activity
   Heap _order_heap;

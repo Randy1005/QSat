@@ -8,7 +8,8 @@ TEST_CASE("Statistics" * doctest::timeout(300)) {
 
   qsat::Literal a(1), b(-7), c(9);
   qsat::Solver solver;
-  
+ 
+
   REQUIRE(solver.num_clauses() == 0);
   REQUIRE(solver.num_variables() == 0);
   
@@ -23,6 +24,36 @@ TEST_CASE("Statistics" * doctest::timeout(300)) {
   solver.reset();
   REQUIRE(solver.num_clauses() == 0);
   REQUIRE(solver.num_variables() == 0);
+}
+
+// Unittest: literal operators / literal evaluation
+TEST_CASE("Literal Operators + Evaluation" * doctest::timeout(300)) {
+  qsat::Literal a(-1), b(2);
+  qsat::Solver s;
+
+  s.add_clause({a, b});
+
+  // value check: a, b are evaluated to UNDEF now
+  REQUIRE(s.value(a) == qsat::Status::UNDEFINED);
+  REQUIRE(s.value(b) == qsat::Status::UNDEFINED);
+
+  REQUIRE(s.value(var(a)) == qsat::Status::UNDEFINED);
+  REQUIRE(s.value(var(b)) == qsat::Status::UNDEFINED);
+  
+
+  // sign check: sign(a) == 1, sign(b) == 0
+  REQUIRE(sign(a) == 1);
+  REQUIRE(sign(b) == 0);
+
+  // negation
+  REQUIRE(sign(~a) == 0);
+  REQUIRE(sign(~b) == 1);
+
+  s.assign(var(a), 1);
+  s.assign(var(b), 0);
+
+  REQUIRE(s.value(a) == qsat::Status::FALSE);
+  REQUIRE(s.value(b) == qsat::Status::FALSE);
 }
 
 /*
