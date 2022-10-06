@@ -3,6 +3,11 @@
 #include <doctest.h>
 #include <qsat/qsat.hpp>
 
+// TODO: add extreme cases
+// + heap with one element
+// + randomized elements (sort them to verify)
+
+
 // Unittest: heap functionaliy
 TEST_CASE("Order Heap" * doctest::timeout(300)) {
   std::vector<double> activities{20.0, 14.2, 4.5, 7.5, 8.4, 17.5, 0.3};

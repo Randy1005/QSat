@@ -60,7 +60,6 @@ include(CTest)
 # add sub directories
 add_subdirectory(qsat)
 add_subdirectory(${QSAT_3RD_PARTY_DIR}/PEGTL)
-add_subdirectory(mtl)
 add_subdirectory(main)
 add_subdirectory(unittests)
 

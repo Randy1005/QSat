@@ -11,7 +11,7 @@
 #include <filesystem>
 // TODO: this is probably not the right way to include
 // but cmake is acting weird with header-only libraries
-#include "../mtl/heap.hpp"
+#include "heap.hpp"
 #include "intel_task_grammar.hpp"
 
 
