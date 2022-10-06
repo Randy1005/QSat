@@ -117,11 +117,12 @@ struct Clause {
   Clause& operator=(Clause&& rhs) = default;
 
   // TODO: implement == operator?
+  
+  bool is_undef = false;
 
   std::vector<Literal> literals;
 };
 
-const Clause cla_undef({lit_undef});
 
 
 /**
@@ -245,16 +246,8 @@ public:
     }
   }
   
-  /**
-   * @brief enqueue
-   * if value(p) is evaluated, check for conflict
-   * else store this new fact, update assignment, trail, etc.
-   */
-  inline bool enqueue(Literal& p, Clause& from) {
-     
-  }
 
-  inline bool unchecked_enqueue(Literal &p, Clause& from) {
+  inline bool unchecked_enqueue(const Literal &p, const Clause& from) {
     assert(value(p) != Status::UNDEFINED);
 
     // make the assignment, so this literal
@@ -266,8 +259,18 @@ public:
   
     // push this literal into trail
     _trail.push_back(p);
+    
+    return true;
   }
-
+  
+  /**
+   * @brief enqueue
+   * if value(p) is evaluated, check for conflict
+   * else store this new fact, update assignment, trail, etc.
+   */
+  inline bool enqueue(const Literal& p, const Clause& from) {
+    return value(p) != Status::UNDEFINED ? value(p) != Status::FALSE : unchecked_enqueue(p, from); 
+  }
 
   void reset();
   void read_dimacs(std::istream&);
