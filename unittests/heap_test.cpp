@@ -3,7 +3,7 @@
 #include <doctest.h>
 #include <qsat/qsat.hpp>
 
-// TODO: add extreme cases
+// TODO: add extreme cases to uniittest
 // + heap with one element
 // + randomized elements (sort them to verify)
 
