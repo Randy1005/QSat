@@ -9,18 +9,14 @@
 #include <chrono>
 #include <unordered_map>
 #include <filesystem>
-// TODO: this is probably not the right way to include
-// but cmake is acting weird with header-only libraries
 #include "heap.hpp"
 #include "intel_task_grammar.hpp"
-
 
 namespace qsat {
 
 struct Clause;
 struct Literal;
 struct VarInfo;
-
 
 enum class Status {
   FALSE = 0,
@@ -102,9 +98,9 @@ struct Clause {
   /**
   @brief constructs a clause with given literals using copy semantics
   */
-  Clause(const std::vector<Literal>& lits);
+  Clause(const std::vector<Literal>& lits, bool undef = false);
 
-  Clause(std::vector<Literal>&& lits);
+  Clause(std::vector<Literal>&& lits, bool undef = false);
 
   /**
   @brief default copy assignment operator
@@ -117,13 +113,14 @@ struct Clause {
   Clause& operator=(Clause&& rhs) = default;
 
   // TODO: implement == operator?
-  
   bool is_undef = false;
 
   std::vector<Literal> literals;
 };
 
-
+// constant:
+// an undefined/empty clause
+const Clause cla_undef({}, true);
 
 /**
  * @struct VarInfo
@@ -207,16 +204,16 @@ public:
   size_t num_variables() const {
     return _assigns.size(); 
   }
-  size_t n_assigns() const { 
+  size_t num_assigns() const { 
     return _trail.size(); 
   }
   
   size_t decision_level() const {
-    return _trail.size();
+    return _trail_lim.size();
   }
 
   // TODO: this shouldn't be a public interface
-  // but I need this to unit test liteal op functionalities
+  // but I need this to unit test literal op functionalities
   void assign(int v, bool val) {
     _assigns[v] = val ? Status::TRUE : Status::FALSE;
   }
@@ -248,7 +245,7 @@ public:
   
 
   inline bool unchecked_enqueue(const Literal &p, const Clause& from) {
-    assert(value(p) != Status::UNDEFINED);
+    assert(value(p) == Status::UNDEFINED);
 
     // make the assignment, so this literal
     // evaluates to true
@@ -256,7 +253,12 @@ public:
     
     // store decision level and reason clause
     _var_info[var(p)] = VarInfo{from, static_cast<int>(decision_level())};
-  
+ 
+    for (int i = 0; i < _var_info[var(p)].reason.literals.size(); i++) {
+      std::cout << _var_info[var(p)].reason.literals[i].id << " ";
+    }
+    std::cout << "\n";
+
     // push this literal into trail
     _trail.push_back(p);
     
@@ -268,8 +270,10 @@ public:
    * if value(p) is evaluated, check for conflict
    * else store this new fact, update assignment, trail, etc.
    */
-  inline bool enqueue(const Literal& p, const Clause& from) {
-    return value(p) != Status::UNDEFINED ? value(p) != Status::FALSE : unchecked_enqueue(p, from); 
+  inline bool enqueue(const Literal& p, const Clause& from = cla_undef) {
+    return value(p) != Status::UNDEFINED ? 
+      value(p) != Status::FALSE : 
+      unchecked_enqueue(p, from); 
   }
 
   void reset();

@@ -12,14 +12,16 @@ Literal::Literal(int var) {
  id = (var > 0) ? 2 * var - 2 : 2 * -var - 1;
 }
 
-Clause::Clause(const std::vector<Literal>& lits) :
-  literals(lits) 
+Clause::Clause(const std::vector<Literal>& lits, bool undef) :
+  literals(lits),
+  is_undef(undef)
 {
 
 }
 
-Clause::Clause(std::vector<Literal>&& lits) :
-  literals(std::move(lits)) 
+Clause::Clause(std::vector<Literal>&& lits, bool undef) :
+  literals(std::move(lits)),
+  is_undef(undef)
 {
 
 }

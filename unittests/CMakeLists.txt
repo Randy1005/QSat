@@ -3,13 +3,14 @@ enable_testing()
 include(${QSAT_3RD_PARTY_DIR}/doctest/doctest.cmake)
 
 list(APPEND QSAT_UNITTESTS
-  basics
+  verify_basics
   # dimacs_v16_c18
   # dimacs_v20_c91
   # dimacs_v20_c91_2
   # dimacs_v20_c91_3
   # dimacs_v20_c91_4
-  heap_test
+  verify_heap
+  verify_enqueue
 )
 
 foreach(unittest IN LISTS QSAT_UNITTESTS)
