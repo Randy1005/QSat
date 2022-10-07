@@ -254,11 +254,6 @@ public:
     // store decision level and reason clause
     _var_info[var(p)] = VarInfo{from, static_cast<int>(decision_level())};
  
-    for (int i = 0; i < _var_info[var(p)].reason.literals.size(); i++) {
-      std::cout << _var_info[var(p)].reason.literals[i].id << " ";
-    }
-    std::cout << "\n";
-
     // push this literal into trail
     _trail.push_back(p);
     
