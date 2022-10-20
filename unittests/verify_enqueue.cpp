@@ -21,12 +21,13 @@ TEST_CASE("Solver Enqueue Functionality" * doctest::timeout(300)) {
   s.add_clause(c2.literals);
 
   // pre-condition:
-  // num_assigns = 0, value(a, b, c, d) = undef
-  REQUIRE(s.num_assigns() == 0);
+  // num_assigns = 1, value(a, b, c) = undef
+	// d is unit clause, gets enqueued during add_clause
+  REQUIRE(s.num_assigns() == 1);
   REQUIRE(s.value(a) == qsat::Status::UNDEFINED);
   REQUIRE(s.value(b) == qsat::Status::UNDEFINED);
   REQUIRE(s.value(c) == qsat::Status::UNDEFINED);
-  REQUIRE(s.value(d) == qsat::Status::UNDEFINED);
+  REQUIRE(s.value(d) == qsat::Status::TRUE);
  
   // invoke enqueue
   // e.g. enq a, with c0 as reason clause

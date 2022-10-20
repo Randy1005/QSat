@@ -93,8 +93,21 @@ void Solver::add_clause(std::vector<Literal>&& lits) {
     _new_var(var(l));
   }
 
-  _clauses.push_back(Clause(std::move(lits)));
+	if (lits.size() == 0) {
+		// empty clause
+		// TODO: should handle this
+	}
+	else if (lits.size() == 1) {
+		// unit clause
+		// enqueue the only literal
+		enqueue(lits[0]);	
+	}
+	else {
 
+		// TODO:  attach clause
+	}
+
+	_clauses.push_back(Clause(std::move(lits)));
 }
 
 void Solver::add_clause(const std::vector<Literal>& lits) {
@@ -114,7 +127,29 @@ void Solver::add_clause(const std::vector<Literal>& lits) {
     _new_var(var(l));
   }
 
-  _clauses.push_back(Clause(lits));
+
+	if (lits.size() == 0) {
+		// empty clause
+		// TODO: should handle this
+	}
+	else if (lits.size() == 1) {
+		// unit clause
+		// enqueue the only literal
+		enqueue(lits[0]);	
+	}
+	else {
+
+		// TODO:  attach clause
+	}
+
+
+	_clauses.push_back(Clause(lits));
+
+
+}
+
+void Solver::attach_clause(const Clause& c) {
+
 }
 
 /*
@@ -241,6 +276,10 @@ void Solver::_new_var(int v) {
   
   // insert this var into order heap
   _insert_var_order(v);
+
+	// resize watches
+	watches.resize(2 * num_variables());
+	
 }
 
 void Solver::reset() {

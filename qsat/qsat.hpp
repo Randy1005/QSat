@@ -2,12 +2,12 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include <map>
+// #include <map>
 #include <stack>
 #include <algorithm>
 #include <string>
 #include <chrono>
-#include <unordered_map>
+// #include <unordered_map>
 #include <filesystem>
 #include "heap.hpp"
 #include "intel_task_grammar.hpp"
@@ -134,14 +134,30 @@ struct VarInfo {
     reason(c),
     decision_level(lvl)
   {
-  }
-
-
-
-  Clause reason;
+	}
+  
+	Clause reason;
   int decision_level;
 };
 
+
+/**
+ * @struct Watcher
+ * @brief stores a clause watching a specified literal
+ * and a blocker literal that gets affected by the 
+ * specified literal (used in the lit-vec<Watcher> mapping 'watches')
+ */
+struct Watcher {
+	Clause& cref;
+	Literal blocker;
+
+	Watcher(Clause& cr, Literal p) :
+		cref(cr),
+		blocker(p)
+	{
+	}
+	
+};
 
 
 /**
@@ -197,6 +213,27 @@ public:
   @brief adds a clause given a vector of literals (using copy semantics)
   */
   void add_clause(const std::vector<Literal>& lits);
+
+
+	// TODO:
+	// how do I implement FAST detaching?
+	// Clauses' indices are not fixed
+	// they might get moved around during solving
+	// should I still use std::vector for storing clauses?
+
+	/**
+	 * @brief attach clause
+	 * initialize the watched literals for
+	 * newly added clauses
+	 */
+	void attach_clause(const Clause& c);
+	
+	/**
+	 * @brief detach clause
+	 * inverse action of attach, remove the watchers
+	 */
+	void detach_clause(const Clause& c);
+
 
   size_t num_clauses() const { 
     return _clauses.size(); 
@@ -271,6 +308,7 @@ public:
       unchecked_enqueue(p, from); 
   }
 
+
   void reset();
   void read_dimacs(std::istream&);
 
@@ -313,6 +351,7 @@ private:
    */
   void _new_var(int new_v);
 
+
   std::vector<Clause> _clauses; 
   
   // assignment vector 
@@ -339,6 +378,12 @@ private:
   // _trail is 1-D, but with _trail_lim we know how many 
   // decisions are in a single decision level
   std::vector<int> _trail_lim;
+
+
+	// watches
+	// watches[lit] maps to a list of watchers 
+	// watching 'lit'
+	std::vector<std::vector<Watcher>> watches;
 
   // output file stream to write to z3py
   std::ofstream _z3_ofs;

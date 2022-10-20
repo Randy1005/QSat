@@ -36,14 +36,9 @@ int main(int argc, char* argv[]) {
   //      enq d, with c2 as reason clause
   bool res_a = s.enqueue(a, c0);
   
-   
-  
-
-
   end_time = std::chrono::steady_clock::now(); 
 
 
-   
   std::chrono::duration<double, std::milli> elapsed_time = end_time - start_time;  
   std::cout << "Run time: " 
             << elapsed_time.count()
