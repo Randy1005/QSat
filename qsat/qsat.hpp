@@ -2,12 +2,10 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-// #include <map>
 #include <stack>
 #include <algorithm>
 #include <string>
 #include <chrono>
-// #include <unordered_map>
 #include <filesystem>
 #include "heap.hpp"
 #include "intel_task_grammar.hpp"
@@ -72,7 +70,7 @@ const Literal lit_undef = {-1};
  * var(lit), ~lit, signed(lit), etc.
  */
 inline Literal operator ~(const Literal& p) {
-  Literal q(p.id);
+  Literal q = lit_undef;
   q.id = p.id ^ 1;
   return q;
 }
@@ -148,10 +146,11 @@ struct VarInfo {
  * specified literal (used in the lit-vec<Watcher> mapping 'watches')
  */
 struct Watcher {
-	Clause& cref;
+	// clause reference id
+	int cref;
 	Literal blocker;
 
-	Watcher(Clause& cr, Literal p) :
+	Watcher(int cr, Literal p) :
 		cref(cr),
 		blocker(p)
 	{
@@ -217,10 +216,8 @@ public:
 
 	// TODO:
 	// how do I implement FAST detaching?
-	// Clauses' indices are not fixed
-	// they might get moved around during solving
+	// with indexed deletion?
 	// should I still use std::vector for storing clauses?
-
 	/**
 	 * @brief attach clause
 	 * initialize the watched literals for
@@ -308,6 +305,9 @@ public:
       unchecked_enqueue(p, from); 
   }
 
+	const Clause& clause(int i) const {
+		return _clauses[i];
+	}
 
   void reset();
   void read_dimacs(std::istream&);
@@ -315,6 +315,13 @@ public:
 
   bool transpile_task_to_z3(const std::string& task_file_name);
   bool transpile_task_to_dimacs(const std::string& task_file_name);
+
+
+	// watches
+	// watches[lit] maps to a list of watchers 
+	// watching 'lit'
+	// TODO: is it the best way to use a vec of vec?
+	std::vector<std::vector<Watcher>> watches;
 
 private:
 
@@ -379,11 +386,6 @@ private:
   // decisions are in a single decision level
   std::vector<int> _trail_lim;
 
-
-	// watches
-	// watches[lit] maps to a list of watchers 
-	// watching 'lit'
-	std::vector<std::vector<Watcher>> watches;
 
   // output file stream to write to z3py
   std::ofstream _z3_ofs;

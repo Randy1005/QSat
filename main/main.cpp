@@ -14,28 +14,26 @@ int main(int argc, char* argv[]) {
 
   start_time = std::chrono::steady_clock::now(); 
   
-  qsat::Literal a(1), b(-7), c(9), d(-4);
   qsat::Solver s;
 
-  qsat::Clause c0({a, d, c});
-  qsat::Clause c1({b, c});
-  qsat::Clause c2({d});
-
-  // NOTE:
-  // we don't usually call add_clause like this
-  // solely for the purpose of unit testing
-  s.add_clause(c0.literals);
-  s.add_clause(c1.literals);
-  s.add_clause(c2.literals);
+	s.read_dimacs(argv[1]);
 
 
-  // invoke enqueue
-  // e.g. enq a, with c0 as reason clause
-  //      enq b, with c1 as reason clause
-  //      enq c, no reason clause
-  //      enq d, with c2 as reason clause
-  bool res_a = s.enqueue(a, c0);
-  
+	// watches (upon completing add clauses)
+	int p = 12;
+	std::cout << "watches[" << p << "] = \n";
+	for (auto& w : s.watches[p]) {
+		for (auto& p : s.clause(w.cref).literals) {
+			std::cout << p.id << " ";
+		}
+		std::cout << "\n";
+		std::cout << "blocker: " << w.blocker.id << "\n";
+		std::cout << "====================\n";
+	}
+	
+	
+
+
   end_time = std::chrono::steady_clock::now(); 
 
 

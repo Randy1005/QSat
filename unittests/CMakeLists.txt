@@ -11,6 +11,7 @@ list(APPEND QSAT_UNITTESTS
   # dimacs_v20_c91_4
   verify_heap
   verify_enqueue
+	verify_watches
 )
 
 foreach(unittest IN LISTS QSAT_UNITTESTS)

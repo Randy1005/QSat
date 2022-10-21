@@ -16,14 +16,12 @@ Clause::Clause(const std::vector<Literal>& lits, bool undef) :
   literals(lits),
   is_undef(undef)
 {
-
 }
 
 Clause::Clause(std::vector<Literal>&& lits, bool undef) :
   literals(std::move(lits)),
   is_undef(undef)
 {
-
 }
 
 // we may implement something in the constructor in the future, we don't know yet
@@ -77,7 +75,7 @@ void Solver::_read_clause(int variable, std::vector<Literal>& lits) {
 }
 
 void Solver::add_clause(std::vector<Literal>&& lits) {
-  // resize the assignment vector to the current largest variable
+	// resize the assignment vector to the current largest variable
   int max = 0;
 
   for (const auto& l : lits) {
@@ -92,6 +90,7 @@ void Solver::add_clause(std::vector<Literal>&& lits) {
     // add new var
     _new_var(var(l));
   }
+	
 
 	if (lits.size() == 0) {
 		// empty clause
@@ -103,8 +102,10 @@ void Solver::add_clause(std::vector<Literal>&& lits) {
 		enqueue(lits[0]);	
 	}
 	else {
-
-		// TODO:  attach clause
+		// initialize watcher literals for this clause
+		// TODO: refactor this into the attach method
+		watches[(~lits[0]).id].push_back(Watcher(num_clauses(), lits[1]));
+		watches[(~lits[1]).id].push_back(Watcher(num_clauses(), lits[0]));
 	}
 
 	_clauses.push_back(Clause(std::move(lits)));
@@ -127,7 +128,7 @@ void Solver::add_clause(const std::vector<Literal>& lits) {
     _new_var(var(l));
   }
 
-
+	
 	if (lits.size() == 0) {
 		// empty clause
 		// TODO: should handle this
@@ -138,18 +139,21 @@ void Solver::add_clause(const std::vector<Literal>& lits) {
 		enqueue(lits[0]);	
 	}
 	else {
-
-		// TODO:  attach clause
+		// initialize watcher literals for this clause
+		// TODO: refactor this into the attach method
+		watches[(~lits[0]).id].push_back(Watcher(num_clauses(), lits[1]));
+		watches[(~lits[1]).id].push_back(Watcher(num_clauses(), lits[0]));
 	}
-
-
+	
 	_clauses.push_back(Clause(lits));
-
-
 }
 
+// TODO: refactor watcher initialization into this method
 void Solver::attach_clause(const Clause& c) {
+}
 
+// TODO: will be needed when we reduce learnt clauses
+void Solver::detach_clause(const Clause& c) {
 }
 
 /*
