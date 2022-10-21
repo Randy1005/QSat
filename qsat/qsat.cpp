@@ -149,33 +149,53 @@ void Solver::add_clause(const std::vector<Literal>& lits) {
 
 
 int Solver::propagate() {
-	
 	int confl_cla = CREF_UNDEF;
 	int num_props = 0;
 
-	std::cout << "trail size: " << _trail.size() << "\n";
 	
 	while (_qhead < _trail.size()) {
 		// move qhead forward, and get an enqueued face p
 		// p is the literal we're propagating
 		Literal p = _trail[_qhead++];
-		
+		num_props++;	
 		// obtain the watchers of this literal
 		std::vector<Watcher>& ws = watches[p.id];
+
+		// sth like:
+		// minisat: *j++ = *i++
+		// qsat: ws[j++] = ws[i++];
+		size_t i, j;
+		for (i = j = 0; i < ws.size(); ) {
+			// no need to inspect clause if
+			// the blocker literal is already satisfied
+			// and copy this watcher to the front
+			Literal b = ws[i].blocker;
+			if (value(b) == Status::TRUE) {
+				ws[j++] = ws[i++];
+				continue;
+			}
+
+
+			// make sure the false literal is data[1]
+			int cr = ws[i].cref;
+			Clause& c = _clauses[cr];
+			Literal false_lit = ~p;
+			if (c.literals[0] == false_lit) {
+				c.literals[0] = c.literals[1];
+				c.literals[1] = false_lit;
+			}
+			assert(c.literals[1] == false_lit);
+			i++;
+
+
+			// TODO: finish propagation method	
+		}
 
 		std::cout << "propagating " << p.id << "\n";
 	}
 
-	// TODO: implementation question
-	// minisat implements its own vec
-	// so it copies memory with pointer 
-	// easily (probably very little overhead?)
-	// how do I achieve the same with std::vector?
-
-
-
-
-	// propagations += num_props;
+	
+	propagations += num_props;
 	return confl_cla;
 }
 
