@@ -34,7 +34,7 @@ TEST_CASE("Solver Enqueue Functionality" * doctest::timeout(300)) {
   //      enq b, with c1 as reason clause
   //      enq c, no reason clause
   //      enq d, with c2 as reason clause
-  bool res_a = s.enqueue(a, c0);
+  bool res_a = s.enqueue(a, 0);
   
   // should be successful, because a has no initial assignment 
   REQUIRE(res_a == true);
@@ -44,7 +44,7 @@ TEST_CASE("Solver Enqueue Functionality" * doctest::timeout(300)) {
   // which makes its value false
   // then enqueueing b would cause conflict
   s.assign(var(b), true);
-  bool res_b = s.enqueue(b, c1);
+  bool res_b = s.enqueue(b, 1);
   REQUIRE(res_b == false);
   REQUIRE(s.value(b) == qsat::Status::FALSE);
 

@@ -13,12 +13,14 @@ TEST_CASE("Statistics" * doctest::timeout(300)) {
   REQUIRE(solver.num_clauses() == 0);
   REQUIRE(solver.num_variables() == 0);
   
-  solver.add_clause({a});
-  REQUIRE(solver.num_clauses() == 1);
+	// NOTE: we don't store unit clauses
+	// the unit literal is enqueued directly
+	solver.add_clause({a});
+  REQUIRE(solver.num_clauses() == 0);
   REQUIRE(solver.num_variables() == 1);
 
   solver.add_clause({b, c});
-  REQUIRE(solver.num_clauses() == 2);
+  REQUIRE(solver.num_clauses() == 1);
   REQUIRE(solver.num_variables() == 9);
 
   solver.reset();

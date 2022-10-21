@@ -17,10 +17,12 @@ int main(int argc, char* argv[]) {
   qsat::Solver s;
 
 	s.read_dimacs(argv[1]);
-
+	
+	s.propagate();
 
 	// watches (upon completing add clauses)
-	int p = 12;
+	/*
+	int p = 1;
 	std::cout << "watches[" << p << "] = \n";
 	for (auto& w : s.watches[p]) {
 		for (auto& p : s.clause(w.cref).literals) {
@@ -30,6 +32,8 @@ int main(int argc, char* argv[]) {
 		std::cout << "blocker: " << w.blocker.id << "\n";
 		std::cout << "====================\n";
 	}
+	*/
+
 	
 	
 

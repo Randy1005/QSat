@@ -26,13 +26,14 @@ Clause::Clause(std::vector<Literal>&& lits, bool undef) :
 
 // we may implement something in the constructor in the future, we don't know yet
 Solver::Solver() :
-  _order_heap(VarOrderLt(_activities))
+  _order_heap(VarOrderLt(_activities)),
+	_qhead(0)
 {
 }
 
-void Solver::read_dimacs(const std::string& inputFileName) {
+void Solver::read_dimacs(const std::string& input_file) {
   std::ifstream ifs;
-  ifs.open(inputFileName);
+  ifs.open(input_file);
 
   if (!ifs) {
     throw std::runtime_error("failed to open a file");
@@ -98,17 +99,16 @@ void Solver::add_clause(std::vector<Literal>&& lits) {
 	}
 	else if (lits.size() == 1) {
 		// unit clause
-		// enqueue the only literal
+		// don't store it
+		// instead, enqueue the only literal
 		enqueue(lits[0]);	
 	}
 	else {
 		// initialize watcher literals for this clause
-		// TODO: refactor this into the attach method
-		watches[(~lits[0]).id].push_back(Watcher(num_clauses(), lits[1]));
-		watches[(~lits[1]).id].push_back(Watcher(num_clauses(), lits[0]));
+		_clauses.push_back(Clause(std::move(lits)));
+		_attach_clause(num_clauses() - 1);
 	}
 
-	_clauses.push_back(Clause(std::move(lits)));
 }
 
 void Solver::add_clause(const std::vector<Literal>& lits) {
@@ -135,25 +135,59 @@ void Solver::add_clause(const std::vector<Literal>& lits) {
 	}
 	else if (lits.size() == 1) {
 		// unit clause
-		// enqueue the only literal
+		// don't store it
+		// instead, enqueue the only literal
 		enqueue(lits[0]);	
 	}
 	else {
 		// initialize watcher literals for this clause
-		// TODO: refactor this into the attach method
-		watches[(~lits[0]).id].push_back(Watcher(num_clauses(), lits[1]));
-		watches[(~lits[1]).id].push_back(Watcher(num_clauses(), lits[0]));
+		_clauses.push_back(Clause(lits));
+		_attach_clause(num_clauses() - 1);
 	}
 	
-	_clauses.push_back(Clause(lits));
 }
 
-// TODO: refactor watcher initialization into this method
-void Solver::attach_clause(const Clause& c) {
+
+int Solver::propagate() {
+	
+	int confl_cla = CREF_UNDEF;
+	int num_props = 0;
+
+	std::cout << "trail size: " << _trail.size() << "\n";
+	
+	while (_qhead < _trail.size()) {
+		// move qhead forward, and get an enqueued face p
+		// p is the literal we're propagating
+		Literal p = _trail[_qhead++];
+		
+		// obtain the watchers of this literal
+		std::vector<Watcher>& ws = watches[p.id];
+
+		std::cout << "propagating " << p.id << "\n";
+	}
+
+	// TODO: implementation question
+	// minisat implements its own vec
+	// so it copies memory with pointer 
+	// easily (probably very little overhead?)
+	// how do I achieve the same with std::vector?
+
+
+
+
+	// propagations += num_props;
+	return confl_cla;
+}
+
+
+void Solver::_attach_clause(const int c_id) {
+	std::vector<Literal>& lits = _clauses[c_id].literals;
+	watches[(~lits[0]).id].push_back(Watcher(c_id, lits[1]));
+	watches[(~lits[1]).id].push_back(Watcher(c_id, lits[0]));
 }
 
 // TODO: will be needed when we reduce learnt clauses
-void Solver::detach_clause(const Clause& c) {
+void Solver::_detach_clause(const int c_id) {
 }
 
 /*

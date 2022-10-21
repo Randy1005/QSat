@@ -62,7 +62,7 @@ struct Literal {
 };
 
 // constant for representing undefined literal
-const Literal lit_undef = {-1};
+const Literal LIT_UNDEF = {-1};
 
 
 /**
@@ -70,7 +70,7 @@ const Literal lit_undef = {-1};
  * var(lit), ~lit, signed(lit), etc.
  */
 inline Literal operator ~(const Literal& p) {
-  Literal q = lit_undef;
+  Literal q = LIT_UNDEF;
   q.id = p.id ^ 1;
   return q;
 }
@@ -117,8 +117,8 @@ struct Clause {
 };
 
 // constant:
-// an undefined/empty clause
-const Clause cla_undef({}, true);
+// an undefined/empty clause id
+const int CREF_UNDEF = -1; 
 
 /**
  * @struct VarInfo
@@ -128,13 +128,13 @@ const Clause cla_undef({}, true);
 struct VarInfo {
   VarInfo() = default;
 
-  VarInfo(const Clause& c, int lvl) :
-    reason(c),
+  VarInfo(int cref, int lvl) :
+    reason_cla(cref),
     decision_level(lvl)
   {
 	}
   
-	Clause reason;
+	int reason_cla;
   int decision_level;
 };
 
@@ -172,9 +172,9 @@ public:
 
   /**
   @brief reads in dimacs cnf file, and store the literals and clauses
-  @param inputFileName the dimacs cnf file name
+  @param input_file the dimacs cnf file name
   */
-  void read_dimacs(const std::string& inputFileName);
+  void read_dimacs(const std::string& input_file);
   
   /**
   @brief dumps the solver info via std::ostream
@@ -212,25 +212,6 @@ public:
   @brief adds a clause given a vector of literals (using copy semantics)
   */
   void add_clause(const std::vector<Literal>& lits);
-
-
-	// TODO:
-	// how do I implement FAST detaching?
-	// with indexed deletion?
-	// should I still use std::vector for storing clauses?
-	/**
-	 * @brief attach clause
-	 * initialize the watched literals for
-	 * newly added clauses
-	 */
-	void attach_clause(const Clause& c);
-	
-	/**
-	 * @brief detach clause
-	 * inverse action of attach, remove the watchers
-	 */
-	void detach_clause(const Clause& c);
-
 
   size_t num_clauses() const { 
     return _clauses.size(); 
@@ -278,15 +259,15 @@ public:
   }
   
 
-  inline bool unchecked_enqueue(const Literal &p, const Clause& from) {
+  inline bool unchecked_enqueue(const Literal &p, const int from_cla) {
     assert(value(p) == Status::UNDEFINED);
 
-    // make the assignment, so this literal
+    // make the assignment, such that this literal
     // evaluates to true
     _assigns[var(p)] = static_cast<Status>(!sign(p)); 
     
     // store decision level and reason clause
-    _var_info[var(p)] = VarInfo{from, static_cast<int>(decision_level())};
+    _var_info[var(p)] = VarInfo{from_cla, static_cast<int>(decision_level())};
  
     // push this literal into trail
     _trail.push_back(p);
@@ -299,15 +280,26 @@ public:
    * if value(p) is evaluated, check for conflict
    * else store this new fact, update assignment, trail, etc.
    */
-  inline bool enqueue(const Literal& p, const Clause& from = cla_undef) {
+  inline bool enqueue(const Literal& p, const int from_cla = CREF_UNDEF) {
     return value(p) != Status::UNDEFINED ? 
       value(p) != Status::FALSE : 
-      unchecked_enqueue(p, from); 
+      unchecked_enqueue(p, from_cla); 
   }
 
 	const Clause& clause(int i) const {
 		return _clauses[i];
 	}
+
+	/**
+	 * @brief propagate
+	 * carries out boolean constraint propagation (BCP)
+	 * and propagates all enqueued facts
+	 * if a conflict is encountered, return the conflict clause id
+	 * else return an undefined clause id
+	 */
+	// TODO: probably define as public for now
+	// for the purpose of functionality testing
+	int propagate();
 
   void reset();
   void read_dimacs(std::istream&);
@@ -323,6 +315,8 @@ public:
 	// TODO: is it the best way to use a vec of vec?
 	std::vector<std::vector<Watcher>> watches;
 
+	// statistic variables
+	uint64_t propagations = 0;
 private:
 
   /**
@@ -357,8 +351,21 @@ private:
    * P.S. invoked during parsing
    */
   void _new_var(int new_v);
+	
+	/**
+	 * @brief attach clause
+	 * initialize the watched literals for
+	 * newly added clauses
+	 */
+	void _attach_clause(const int c_id);
+	
+	/**
+	 * @brief detach clause
+	 * inverse action of attach, remove the watchers
+	 */
+	void _detach_clause(const int c_id);
 
-
+	
   std::vector<Clause> _clauses; 
   
   // assignment vector 
@@ -369,7 +376,6 @@ private:
  
   // var info vector (reason, decision level)
   std::vector<VarInfo> _var_info;
-
 
   // priority queue 
   // for selecting var with max activity
@@ -386,6 +392,13 @@ private:
   // decisions are in a single decision level
   std::vector<int> _trail_lim;
 
+
+	// qhead
+	// an index to track
+	// which literal we're propagating
+	// in the trail
+	// NOTE: no more explicit propagation queue defined
+	int _qhead;
 
   // output file stream to write to z3py
   std::ofstream _z3_ofs;
