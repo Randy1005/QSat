@@ -1,2 +1,2 @@
 # QSat
-Quick SAT solver
++ Reproduction of Minisat (in progress)
