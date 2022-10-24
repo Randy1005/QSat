@@ -45,6 +45,8 @@ var => id => assignment
 struct Literal {
   friend struct Clause;
   friend class Solver;
+	
+	Literal() = default;
 
   /**
   @brief constructs a literal with a given variable
@@ -146,9 +148,7 @@ struct VarInfo {
  * specified literal (used in the lit-vec<Watcher> mapping 'watches')
  */
 struct Watcher {
-	// clause reference id
-	int cref;
-	Literal blocker;
+	Watcher() = default;
 
 	Watcher(int cr, Literal p) :
 		cref(cr),
@@ -156,6 +156,15 @@ struct Watcher {
 	{
 	}
 	
+	Watcher& operator=(const Watcher&) = default;
+	Watcher(const Watcher&) = default;
+	Watcher(Watcher&&) = default;
+
+	// clause reference id
+	int cref;
+	Literal blocker;
+
+
 };
 
 
@@ -227,7 +236,9 @@ public:
     return _trail_lim.size();
   }
 
-  // TODO: this shouldn't be a public interface
+  void print_assigns();
+  
+	// TODO: this shouldn't be a public interface
   // but I need this to unit test literal op functionalities
   void assign(int v, bool val) {
     _assigns[v] = val ? Status::TRUE : Status::FALSE;
@@ -326,7 +337,6 @@ private:
   */
   void _read_clause(int symbol, std::vector<Literal>& lits);
   void _init();
-  void _print_assigns();
 
   /**
    * @brief insert variable order:

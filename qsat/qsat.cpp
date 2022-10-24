@@ -149,28 +149,32 @@ void Solver::add_clause(const std::vector<Literal>& lits) {
 
 
 int Solver::propagate() {
-	int confl_cla = CREF_UNDEF;
+	int confl_cref = CREF_UNDEF;
 	int num_props = 0;
 
+
+	
 	
 	while (_qhead < _trail.size()) {
 		// move qhead forward, and get an enqueued face p
 		// p is the literal we're propagating
 		Literal p = _trail[_qhead++];
+		
+		std::cout << "propagating: " << p.id << "...\n";
 		num_props++;	
 		// obtain the watchers of this literal
+		// std::vector<Watcher> ws = std::move(watches[p.id]);
 		std::vector<Watcher>& ws = watches[p.id];
 
-		// sth like:
-		// minisat: *j++ = *i++
-		// qsat: ws[j++] = ws[i++];
 		size_t i, j;
-		for (i = j = 0; i < ws.size(); ) {
+		bool next_watcher;
+		for (i = j = 0; i < ws.size(); )	{
+			next_watcher = false;
 			// no need to inspect clause if
 			// the blocker literal is already satisfied
 			// and copy this watcher to the front
-			Literal b = ws[i].blocker;
-			if (value(b) == Status::TRUE) {
+			Literal blocker = ws[i].blocker;
+			if (value(blocker) == Status::TRUE) {
 				ws[j++] = ws[i++];
 				continue;
 			}
@@ -186,17 +190,72 @@ int Solver::propagate() {
 			}
 			assert(c.literals[1] == false_lit);
 			i++;
+			
+			// if 0th watch is true, then this
+			// clause is already satisfied
+			Literal first = c.literals[0];
+			Watcher w = Watcher(cr, first);
+			if (first != blocker && value(first) == Status::TRUE) {
+				// copy this new watcher (c, blocker = c[0])
+				// to the front and move on to the
+				// next watcher clause
+				ws[j++] = w;
+				continue;
+			}
+
+			// then we look for an unwatched && non-falsified
+			// literal to use as a new watch
+			// (start from the 3rd literal in clause)
+			for (size_t k = 2; k < c.literals.size(); k++) {
+				if (value(c.literals[k]) != Status::FALSE) {
+					c.literals[1] = c.literals[k];
+					c.literals[k] = false_lit;
+					// and update watchers
+					watches[(~c.literals[1]).id].push_back(w);
+					next_watcher = true;
+					break;
+				}
+			}
+			
+
+			if (next_watcher) {
+				continue;
+			}
 
 
-			// TODO: finish propagation method	
+			// if we reached here:
+			// no new watch is found
+			// this clause is unit, we try to propagate
+			// (we check if c[0] conflicts with current assignment)
+			ws[j++] = w;
+			if (value(first) == Status::FALSE) {
+				// conflict!
+				confl_cref = cr;
+				// propagation ends, move qhead to end of trail
+				_qhead = _trail.size();
+				// and copy the remaining watches
+				// they still need to be examined in the next propagation
+				while (i < c.literals.size()) {
+					ws[j++] = ws[i++];
+				}
+			}
+			else {
+				// valid propagation!
+				// place this new fact on propagation queue
+				// and record the reason clause
+				unchecked_enqueue(first, cr);
+			}
 		}
-
-		std::cout << "propagating " << p.id << "\n";
+		// shrink the watcher list for this literal
+		// keep the first c.size - (i-j) watchers
+		if (i - j != 0) {
+			ws.resize(ws.size() - i + j);
+		}	
 	}
-
+	
 	
 	propagations += num_props;
-	return confl_cla;
+	return confl_cref;
 }
 
 
@@ -288,9 +347,9 @@ bool Solver::_evaluate_clauses(const std::vector<Status>& assignments) {
 */
 
 
-void Solver::_print_assigns() {
+void Solver::print_assigns() {
   for (size_t i = 0; i < _assigns.size(); i++) {
-    std::cout << static_cast<int>(_assigns[i]) << " ";
+		std::cout << static_cast<int>(_assigns[i]) << " ";
   }
   std::cout << "\n";
 }
