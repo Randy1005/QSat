@@ -5,7 +5,6 @@
 #include <stack>
 #include <algorithm>
 #include <string>
-#include <chrono>
 #include <filesystem>
 #include "heap.hpp"
 #include "intel_task_grammar.hpp"
@@ -85,6 +84,7 @@ inline bool sign(const Literal& p) {
   return p.id & 1;
 }
 
+
 /**
 @struct Clause
 @brief struct to create a clause
@@ -98,9 +98,9 @@ struct Clause {
   /**
   @brief constructs a clause with given literals using copy semantics
   */
-  Clause(const std::vector<Literal>& lits, bool undef = false);
+  Clause(const std::vector<Literal>& lits, bool is_learnt  = false);
 
-  Clause(std::vector<Literal>&& lits, bool undef = false);
+  Clause(std::vector<Literal>&& lits, bool is_learnt = false);
 
   /**
   @brief default copy assignment operator
@@ -112,10 +112,10 @@ struct Clause {
   */
   Clause& operator=(Clause&& rhs) = default;
 
-  // TODO: implement == operator?
-  bool is_undef = false;
-
   std::vector<Literal> literals;
+
+	// is this a learnt clause?
+	bool learnt = false;
 };
 
 // constant:
@@ -241,63 +241,43 @@ public:
   void assign(int v, bool val) {
     _assigns[v] = val ? Status::TRUE : Status::FALSE;
   }
+	
+	
+	const Clause& clause(int i) const {
+		return _clauses[i];
+	}
 
   /**
    * @brief value
    * @in v the variable id
    * returns the evaluated value of a variable
    */
-  inline Status value(int v) const {
-    return _assigns[v];
-  }
+  Status value(int v) const;
   
   /**
    * @brief value
    * @in p the literal id
    * returns the evaluated value of a literal
    */
-  inline Status value(const Literal& p) const {
-    if (_assigns[var(p)] == Status::UNDEFINED) {
-      return Status::UNDEFINED;
-    }
-    else {
-      return static_cast<int>(_assigns[var(p)]) ^ sign(p) ? 
-        Status::TRUE : 
-        Status::FALSE;
-    }
-  }
-  
+  Status value(const Literal& p) const;  
 
-  inline bool unchecked_enqueue(const Literal &p, const int from_cla) {
-    assert(value(p) == Status::UNDEFINED);
-
-    // make the assignment, such that this literal
-    // evaluates to true
-    _assigns[var(p)] = static_cast<Status>(!sign(p)); 
-    
-    // store decision level and reason clause
-    _var_info[var(p)] = VarInfo{from_cla, static_cast<int>(decision_level())};
- 
-    // push this literal into trail
-    _trail.push_back(p);
-    
-    return true;
-  }
+  bool unchecked_enqueue(const Literal &p, const int from_cla);
   
   /**
    * @brief enqueue
    * if value(p) is evaluated, check for conflict
    * else store this new fact, update assignment, trail, etc.
    */
-  inline bool enqueue(const Literal& p, const int from_cla = CREF_UNDEF) {
-    return value(p) != Status::UNDEFINED ? 
-      value(p) != Status::FALSE : 
-      unchecked_enqueue(p, from_cla); 
-  }
+  bool enqueue(const Literal& p, const int from_cla = CREF_UNDEF);
 
-	const Clause& clause(int i) const {
-		return _clauses[i];
-	}
+	void var_bump_activity(int v);
+	void var_bump_activity(int v, int var_inc);
+	void var_decay_activity();
+	void cla_bump_activity(Clause& c);
+	void cla_decay_activity();
+
+	int level(int v) const;
+	int reason(int v) const;
 
 	/**
 	 * @brief propagate
@@ -306,7 +286,7 @@ public:
 	 * if a conflict is encountered, return the conflict clause id
 	 * else return an undefined clause id
 	 */
-	// TODO: probably define as public for now
+	// TODO: define as public for now
 	// for the purpose of functionality testing
 	int propagate();
 
@@ -317,6 +297,21 @@ public:
 	 */
 	bool search(/* TODO: search parameters go here */);
 
+	/**
+	 * @brief analyze
+	 * analyze a given conflict clause, and produce a reason clause
+	 * and also a backtrack level the solver should revert its state to
+	 * Pre-condition:
+	 * + out_learnt is cleared
+	 * + current decision level must be greater than root level
+	 * Post-condition:
+	 * + out_learnt[0] is the asserting literal at 'out_btlevel'
+	 * + if out_learnt.size > 1, then out_learnt[1] has the greatest
+	 *   decision level of the rest of the literals
+	 */
+	void analyze(int confl_cref, std::vector<Literal>& out_learnt, int& out_btlevel);
+
+
   void reset();
   void read_dimacs(std::istream&);
 
@@ -326,13 +321,15 @@ public:
 
 
 	// watches
-	// watches[lit] maps to a list of watchers 
-	// watching 'lit'
-	// TODO: is it the best way to use a vec of vec?
+	// watches[lit] maps to a list of watchers watching 'lit'
 	std::vector<std::vector<Watcher>> watches;
 
 	// statistic variables
 	uint64_t propagations = 0;
+
+	// user-configurable variables
+	double var_inc;
+	double cla_inc;
 private:
 
   /**
@@ -380,7 +377,17 @@ private:
 	 */
 	void _detach_clause(const int c_id);
 
-	
+
+	/**
+	 * @brief new decision level
+	 * begin a new decision level
+	 * increase the size of trail_lim by
+	 * pushing the the accumulated length of previous trail
+	 */
+	void _new_decision_level();
+
+
+
   std::vector<Clause> _clauses; 
   
   // assignment vector 
@@ -410,14 +417,113 @@ private:
 
 	// qhead
 	// an index to track
-	// which literal we're propagating
-	// in the trail
+	// which literal we're propagating in the trail
 	// NOTE: no more explicit propagation queue defined
 	int _qhead;
+
+
+	/**
+	 * some temp data structures to prevent
+	 * allocation overhead
+	 */
+	
+	// seen 
+	// a list which records whether a variable is examined
+	// (may be used in multiple methods)
+	// values are just 0 or 1
+	std::vector<char> _seen;
 
   // output file stream to write to z3py
   std::ofstream _z3_ofs;
 };
+
+
+
+/**
+ * inline method implementations 
+ */
+inline Status Solver::value(int v) const {
+	return _assigns[v];
+}
+
+inline Status Solver::value(const Literal& p) const {
+	if (_assigns[var(p)] == Status::UNDEFINED) {
+		return Status::UNDEFINED;
+	}
+	else {
+		return static_cast<int>(_assigns[var(p)]) ^ sign(p) ? 
+			Status::TRUE : 
+			Status::FALSE;
+	}
+}
+
+inline bool Solver::unchecked_enqueue(const Literal &p, const int from_cla) {
+	assert(value(p) == Status::UNDEFINED);
+
+	// make the assignment, such that this literal
+	// evaluates to true
+	_assigns[var(p)] = static_cast<Status>(!sign(p)); 
+	
+	// store decision level and reason clause
+	_var_info[var(p)] = VarInfo{from_cla, static_cast<int>(decision_level())};
+
+	// push this literal into trail
+	_trail.push_back(p);
+	
+	return true;
+}
+
+inline bool Solver::enqueue(const Literal& p, const int from_cla) {
+	return value(p) != Status::UNDEFINED ? 
+		value(p) != Status::FALSE : 
+		unchecked_enqueue(p, from_cla); 
+}
+
+
+inline void Solver::var_bump_activity(int v) {
+	var_bump_activity(v, var_inc);
+}
+inline void Solver::var_bump_activity(int v, int var_inc) {
+
+}
+
+inline void Solver::var_decay_activity() {
+
+}
+
+// TODO: implementation
+inline void Solver::cla_bump_activity(Clause& c) {
+
+} 
+
+inline void Solver::cla_decay_activity() {
+
+}
+
+
+// variable information
+inline int Solver::level(int v) const {
+	return _var_info[v].decision_level;
+}
+
+inline int Solver::reason(int v) const {
+	return _var_info[v].reason_cla;
+}
+
+inline void Solver::_new_decision_level() {
+	_trail_lim.push_back(_trail.size());
+}
+
+
+
+
+
+
+
+
+
+
+
 
 
 }  // end of namespace --------------------------------------------------------

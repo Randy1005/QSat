@@ -12,22 +12,27 @@ Literal::Literal(int var) {
  id = (var > 0) ? 2 * var - 2 : 2 * -var - 1;
 }
 
-Clause::Clause(const std::vector<Literal>& lits, bool undef) :
+Clause::Clause(const std::vector<Literal>& lits, bool is_learnt) :
   literals(lits),
-  is_undef(undef)
+	learnt(is_learnt)
 {
 }
 
-Clause::Clause(std::vector<Literal>&& lits, bool undef) :
+Clause::Clause(std::vector<Literal>&& lits, bool is_learnt) :
   literals(std::move(lits)),
-  is_undef(undef)
+  learnt(is_learnt)
 {
 }
 
-// we may implement something in the constructor in the future, we don't know yet
+
+
 Solver::Solver() :
   _order_heap(VarOrderLt(_activities)),
-	_qhead(0)
+	_qhead(0),
+
+
+	var_inc(0),
+	cla_inc(0)
 {
 }
 
@@ -260,12 +265,32 @@ int Solver::propagate() {
 
 
 bool Solver::search() {
+	
+	std::vector<Literal> learnt_clause;
+	int backtrack_level;
+	
 	for (;;) {
 		int confl_cref = propagate();
-
 		if (confl_cref != CREF_UNDEF) {
 			// conflict encountered!
-			std::cout << "conflict cref: " << confl_cref << "\n";
+			std::cout << "conflict!\n";
+
+			if (decision_level() == 0) {
+				// top level conflict
+				std::cout << "TOP LEVEL conflict!\n";
+				return false;
+			}
+			
+			learnt_clause.clear();
+			analyze(confl_cref, learnt_clause, backtrack_level);	
+			
+			std::cout << "learnt clause:\n";
+			for (int i = 0; i < learnt_clause.size(); i++) {
+				std::cout << learnt_clause[i].id << ", ";
+			}
+			std::cout << "\n";
+			std::cout << "bt_lvl: " << backtrack_level << "\n";
+			
 			return false;
 		}
 		else {
@@ -279,14 +304,15 @@ bool Solver::search() {
 			Literal next_lit = LIT_UNDEF;
 			for (size_t i = 0; i < _assigns.size(); i++) {
 				if (_assigns[i] == Status::UNDEFINED) {
-					next_lit.id = 2*i;
+					next_lit.id = 2 * i;
 					break;
 				}
 			}
 			
 			std::cout << "decision:" << next_lit.id << "\n";
-
 			if (next_lit != LIT_UNDEF) {
+				// begin new decision level
+				_new_decision_level();
 				unchecked_enqueue(next_lit, CREF_UNDEF);
 			}
 			else {
@@ -303,6 +329,114 @@ bool Solver::search() {
 }
 
 
+
+void Solver::analyze(int confl_cref, 
+		std::vector<Literal>& out_learnt, 
+		int& out_btlevel) {
+	
+	int path_cnt = 0;
+	Literal p = LIT_UNDEF;
+	
+	// leave room for the asserting literal
+	out_learnt.push_back(LIT_UNDEF);
+
+	// traverse from the tail of the trail
+	int index = _trail.size() - 1;
+
+	do {
+		assert(confl_cref != CREF_UNDEF);
+		Clause& confl_c = _clauses[confl_cref];
+		// if this conflict clause is already learnt
+		// i.e. a previously learnt clause causing conflict
+		// this clause should be considered more 'active'
+		if (confl_c.learnt) {
+			cla_bump_activity(confl_c);
+		}
+
+		// if p == lit_undef, that means we're looking at the 
+		// conflict point (the one 'propagation()' produced)
+		// so every literal of confl_c has to be considered
+		//
+		// if not, then we're in the process of traversing the
+		// implication graph, confl_c[0] is the asserting literal
+		// (meaning we exclude this lit when we produce a learnt clause)
+		for (size_t j = (p == LIT_UNDEF) ? 0 : 1; j < confl_c.literals.size(); j++) {
+			Literal q = confl_c.literals[j];
+			
+			// if we haven't checked this variable yet
+			// and its decision level > 0
+			// that means this variable is a contribution to
+			// conflicts, so bump its activity
+			if (!_seen[var(q)] && level(var(q)) > 0) {
+				var_bump_activity(var(q));
+				_seen[var(q)] = 1;
+			
+				// if level(q) > current decision level
+				// that means we're have not yet reached the
+				// UIP (unique implication point)
+				// so increment the path counter
+				// 
+				// NOTE: path_cnt represents the branches originating
+				// from the conflict point
+				if (level(var(q)) >= decision_level()) {
+					path_cnt++;
+				}
+				// otherwise, we have found a literal at UIP
+				else {
+					out_learnt.push_back(q);
+				}
+			}
+		}
+
+		// select the next literal to look at
+		// skip the ones that are already examined
+		while (!_seen[var(_trail[index--])]);
+		p = _trail[index + 1];
+		// use the reason clause of the new p as conflict clause
+		confl_cref = reason(var(p));
+		_seen[var(p)] = 0;
+		path_cnt--;
+
+	} while (path_cnt > 0);
+
+	// add the asserting literal
+	out_learnt[0] = ~p;
+
+
+	// TODO: we could implement clause simplification
+	// before calculating the backtrack level
+
+
+	// find the correct backtrack level
+	if (out_learnt.size() == 1) {
+		// meaning it's a top level conflict
+		out_btlevel = 0;
+	}			
+	else {
+		int max = 1;
+		// find the literal with second-highest level
+		// and swap it out with out_learnt[1]
+		// so that we have the first and second highest level
+		// at [0] and [1]
+		for (int i = 2; i < out_learnt.size(); i++) {
+			if (level(var(out_learnt[i])) > level(var(out_learnt[max]))) {
+				max = i;
+			}
+		}
+
+		// swap in this literal at index 1
+		Literal p = out_learnt[max];
+		out_learnt[max] = out_learnt[1];
+		out_learnt[1] = p;
+		
+		out_btlevel = level(var(p));
+	}
+
+	// clear the seen list
+	_seen.clear();
+}
+
+
 void Solver::_attach_clause(const int c_id) {
 	std::vector<Literal>& lits = _clauses[c_id].literals;
 	watches[(~lits[0]).id].push_back(Watcher(c_id, lits[1]));
@@ -312,83 +446,6 @@ void Solver::_attach_clause(const int c_id) {
 // TODO: will be needed when we reduce learnt clauses
 void Solver::_detach_clause(const int c_id) {
 }
-
-/*
-bool Solver::_backtrack(int decision_depth, std::vector<Status>& assignments) {
-  // base case: we exceeded the maximum decision depth
-  // and still didn't find satisfiable assignments
-  if (decision_depth >= num_variables()) {
-    // std::cout << "reached max depth\n";
-    return false;
-  }
-
-  for (int val = 0; val <= 1; val++) {
-    assignments[decision_depth] = static_cast<Status>(val);
-    
-    // propagate constraints and update satisfiability of the clauses corresponding to
-    // current deciding assignment (variable)
-    // size_t added_sat_clauses_cnt = _propagate_constraint(decision_depth, assignments);
-
-    // check if all clauses are sat
-    // _num_sat_clauses += added_sat_clauses_cnt;
-    
-    if (_num_sat_clauses == num_clauses()) {
-      return true;
-    }
-
-    if (_evaluate_clauses(assignments)) {
-      return true;
-    }
-
-
-    if (_backtrack(decision_depth + 1, assignments)) {
-      return true;
-    }
-    
-
-
-    // if backtrack returns failure, clear out the previous assignment
-    // 0 -> assign false, 1 -> assign true, 2 -> unassigned
-    // num_sat_clauses minus the newly added sat clauses
-    // reset clause satisfiability
-    assignments[decision_depth] = Status::UNDEFINED;
-  }
-
-  // searched the whole tree, and didn't find a solution
-  // std::cout << "searched the whole tree, returning\n"; 
-  return false;
-}
-*/
-
-
-/**
-@brief this method checks if all clauses evaluate to true, if so return true
-       if any one of the clauses evaluates to false, then return false
-*/
-/*
-bool Solver::_evaluate_clauses(const std::vector<Status>& assignments) {
-	for (const auto& c : _clauses) {
- 		bool clause_is_sat = false;
-		for (const auto& lit : c.literals) {
-			// assignment[lit / 2] to get the corresponding variable's assignment
-			// and xor with the rightmost bit of lit (lit & 1) 
-			// (equals to checking if the lit is even)
-			if (assignments[lit.id / 2] != Status::UNDEFINED && 
-      stic_cast<int>(assignments[lit.id / 2]) ^ (lit.id & 1)) 
-			{
-				clause_is_sat = true;
-				break;
-			}
-		}
-
-		if (!clause_is_sat) {
-			return false;
-		}
-	}
-
-  return true;
-}
-*/
 
 
 void Solver::print_assigns() {
@@ -440,7 +497,9 @@ void Solver::_new_var(int v) {
 
 	// resize watches
 	watches.resize(2 * num_variables());
-	
+
+	// resize the seen list
+	_seen.resize(num_variables());
 }
 
 void Solver::reset() {
