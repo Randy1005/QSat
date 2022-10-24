@@ -287,7 +287,6 @@ bool Solver::search() {
 			std::cout << "decision:" << next_lit.id << "\n";
 
 			if (next_lit != LIT_UNDEF) {
-				std::cout << "found a decision.\n";
 				unchecked_enqueue(next_lit, CREF_UNDEF);
 			}
 			else {
