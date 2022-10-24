@@ -259,6 +259,51 @@ int Solver::propagate() {
 }
 
 
+bool Solver::search() {
+	for (;;) {
+		int confl_cref = propagate();
+
+		if (confl_cref != CREF_UNDEF) {
+			// conflict encountered!
+			std::cout << "conflict cref: " << confl_cref << "\n";
+			return false;
+		}
+		else {
+			// no conflict, we can continue
+			// making decisions
+
+			// TODO: this is a testing
+			// decision making scheme
+			// pick the first unassigned variable
+			// and the '+' polarity
+			Literal next_lit = LIT_UNDEF;
+			for (size_t i = 0; i < _assigns.size(); i++) {
+				if (_assigns[i] == Status::UNDEFINED) {
+					next_lit.id = 2*i;
+					break;
+				}
+			}
+			
+			std::cout << "decision:" << next_lit.id << "\n";
+
+			if (next_lit != LIT_UNDEF) {
+				std::cout << "found a decision.\n";
+				unchecked_enqueue(next_lit, CREF_UNDEF);
+			}
+			else {
+				std::cout << "next_lit undef, a solution?\n";
+				print_assigns();
+				return true;
+			}
+
+		}
+	
+	}
+
+
+}
+
+
 void Solver::_attach_clause(const int c_id) {
 	std::vector<Literal>& lits = _clauses[c_id].literals;
 	watches[(~lits[0]).id].push_back(Watcher(c_id, lits[1]));

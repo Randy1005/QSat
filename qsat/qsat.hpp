@@ -60,11 +60,11 @@ struct Literal {
     return id != p.id;
   }
 
-  int id;
+  int id = -1;
 };
 
 // constant for representing undefined literal
-const Literal LIT_UNDEF = {-1};
+const Literal LIT_UNDEF;
 
 
 /**
@@ -163,8 +163,6 @@ struct Watcher {
 	// clause reference id
 	int cref;
 	Literal blocker;
-
-
 };
 
 
@@ -311,6 +309,13 @@ public:
 	// TODO: probably define as public for now
 	// for the purpose of functionality testing
 	int propagate();
+
+	/**
+	 * @brief search
+	 * main search loop that runs BCP
+	 * and resolves conflict
+	 */
+	bool search(/* TODO: search parameters go here */);
 
   void reset();
   void read_dimacs(std::istream&);
