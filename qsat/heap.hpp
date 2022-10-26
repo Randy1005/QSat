@@ -132,7 +132,7 @@ public:
     if (empty()) {
       return false;
     }
-    
+
     return indices[v] >= 0;
   }
 
@@ -170,11 +170,10 @@ public:
    * newly inserted node
    */
   void insert(int v) {
-    if (v + 1 > static_cast<int>(indices.size())) {
-      indices.resize(v + 1);
-    }
-    indices[v] = -1;
-
+    // if (v + 1 > static_cast<int>(indices.size())) {
+      indices.resize(lt.activities.size(), -1);
+    //}
+		
     // pre-condition:
     // this variable must NOT exist in heap
     assert(!in_heap(v));
@@ -188,7 +187,7 @@ public:
   }
 
   /**
-   * @brief remove_max_act:
+   * @brief remove_max:
    * get the root node (max activity)
    * replace the root node with the last node
    * and heapify downwards

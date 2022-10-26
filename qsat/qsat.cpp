@@ -30,10 +30,13 @@ Solver::Solver() :
   _order_heap(VarOrderLt(_activities)),
 	_qhead(0),
 
+	var_inc(1),
+	cla_inc(1),
+	var_decay(0.95),
 
-	var_inc(0),
-	cla_inc(0)
+	_mtrng(_rd())
 {
+
 }
 
 void Solver::read_dimacs(const std::string& input_file) {
@@ -157,15 +160,12 @@ int Solver::propagate() {
 	int confl_cref = CREF_UNDEF;
 	int num_props = 0;
 
-
-	
-	
 	while (_qhead < _trail.size()) {
 		// move qhead forward, and get an enqueued face p
 		// p is the literal we're propagating
 		Literal p = _trail[_qhead++];
 		
-		std::cout << "propagating: " << p.id << "...\n";
+		std::cout << "propagating lit " << p.id << "...\n";
 		num_props++;	
 		// obtain the watchers of this literal
 		// std::vector<Watcher> ws = std::move(watches[p.id]);
@@ -274,16 +274,22 @@ bool Solver::search() {
 		if (confl_cref != CREF_UNDEF) {
 			// conflict encountered!
 			std::cout << "conflict!\n";
+			
+			std::cout << "CONFLICT clause:\n";
+			Clause& c = _clauses[confl_cref];
+			for (int i = 0; i < c.literals.size(); i++) {
+				std::cout << c.literals[i].id << ", ";
+			}
+			std::cout << "\n";
 
 			if (decision_level() == 0) {
-				// top level conflict
-				std::cout << "TOP LEVEL conflict!\n";
+				// top level conflict : UNSAT
 				return false;
 			}
 			
 			learnt_clause.clear();
 			analyze(confl_cref, learnt_clause, backtrack_level);	
-			
+		
 			std::cout << "learnt clause:\n";
 			for (int i = 0; i < learnt_clause.size(); i++) {
 				std::cout << learnt_clause[i].id << ", ";
@@ -294,32 +300,22 @@ bool Solver::search() {
 			return false;
 		}
 		else {
-			// no conflict, we can continue
-			// making decisions
+			// no conflict, we can continue making decisions
 
-			// TODO: this is a testing
-			// decision making scheme
-			// pick the first unassigned variable
-			// and the '+' polarity
-			Literal next_lit = LIT_UNDEF;
-			for (size_t i = 0; i < _assigns.size(); i++) {
-				if (_assigns[i] == Status::UNDEFINED) {
-					next_lit.id = 2 * i;
-					break;
-				}
-			}
+			Literal next_lit = _pick_branch_lit();
 			
-			std::cout << "decision:" << next_lit.id << "\n";
-			if (next_lit != LIT_UNDEF) {
-				// begin new decision level
-				_new_decision_level();
-				unchecked_enqueue(next_lit, CREF_UNDEF);
-			}
-			else {
-				std::cout << "next_lit undef, a solution?\n";
+
+			std::cout << "#DECISION lit: " << next_lit.id << "\n";
+
+			if (next_lit == LIT_UNDEF) {
+				std::cout << "next_lit undef, found a solution!\n";
 				print_assigns();
 				return true;
 			}
+
+			// begin new decision level
+			_new_decision_level();
+			unchecked_enqueue(next_lit, CREF_UNDEF);
 
 		}
 	
@@ -457,7 +453,6 @@ void Solver::print_assigns() {
 
 
 void Solver::dump(std::ostream& os) const {
-
   os << num_variables() << " variables\n";
   os << num_clauses() << " clauses\n";
 
@@ -473,10 +468,51 @@ void Solver::_init() {
 
 }
 
+Literal Solver::_pick_branch_lit() {
+	// NOTE: minisat uses a mixed strategy
+	// combining random selection + activity-based
+	// and then choose a polarity for that var
+	// we use only activity-based for now
+	
+	int next = VAR_UNDEF;
+	
+	// TODO: make a random decision first?
+
+	// activity-based decision
+	while (next == VAR_UNDEF || value(next) != Status::UNDEFINED) {
+		
+		if (_order_heap.empty()) {
+			next = VAR_UNDEF;
+			break;
+		}
+		else {
+			next = _order_heap.remove_max();
+		}
+	}
+
+
+	// choose polarity for this variable (making a literal)
+	// for now, use a random polarity
+	if (next == VAR_UNDEF) {
+		return LIT_UNDEF;
+	}
+	else {
+		// WARNING:
+		// variable stored in heap are indexed from 0
+		// but our interface requires it to index from 1
+		// BE VERY CAUTIOUS in the future
+		Literal p(next + 1);
+		
+		return (_uint_dist(_mtrng) % 2) ? p : ~p;	
+	}
+
+}
+
 void Solver::_insert_var_order(int v) {
-  if (!_order_heap.in_heap(v)) {
+	// TODO: somehow not inserting all the variables??? 
+	if (!_order_heap.in_heap(v)) {
     _order_heap.insert(v);
-  }
+	}
 }
 
 void Solver::_new_var(int v) {

@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <string>
 #include <filesystem>
+#include <random>
 #include "heap.hpp"
 #include "intel_task_grammar.hpp"
 
@@ -65,6 +66,8 @@ struct Literal {
 // constant for representing undefined literal
 const Literal LIT_UNDEF;
 
+// constant for representing undefined variable
+const int VAR_UNDEF = -1;
 
 /**
  * utility inline methods
@@ -271,7 +274,7 @@ public:
   bool enqueue(const Literal& p, const int from_cla = CREF_UNDEF);
 
 	void var_bump_activity(int v);
-	void var_bump_activity(int v, int var_inc);
+	void var_bump_activity(int v, double inc);
 	void var_decay_activity();
 	void cla_bump_activity(Clause& c);
 	void cla_decay_activity();
@@ -330,6 +333,7 @@ public:
 	// user-configurable variables
 	double var_inc;
 	double cla_inc;
+	double var_decay;
 private:
 
   /**
@@ -387,6 +391,13 @@ private:
 	void _new_decision_level();
 
 
+	/**
+	 * @brief pick branch literal
+	 * based on variable activities (order_heap)
+	 * prioritize which literal to propagate first
+	 */
+	Literal _pick_branch_lit();
+
 
   std::vector<Clause> _clauses; 
   
@@ -420,6 +431,18 @@ private:
 	// which literal we're propagating in the trail
 	// NOTE: no more explicit propagation queue defined
 	int _qhead;
+
+
+
+	// random device to seed the random number generator
+	std::random_device _rd;	
+	
+	// mersenne twister random number generator
+	// WARNING: this rng costs a lot of memory according to some developers
+	std::mt19937 _mtrng;
+	
+	// distributions
+	std::uniform_int_distribution<int> _uint_dist;
 
 
 	/**
@@ -469,7 +492,6 @@ inline bool Solver::unchecked_enqueue(const Literal &p, const int from_cla) {
 
 	// push this literal into trail
 	_trail.push_back(p);
-	
 	return true;
 }
 
@@ -483,17 +505,30 @@ inline bool Solver::enqueue(const Literal& p, const int from_cla) {
 inline void Solver::var_bump_activity(int v) {
 	var_bump_activity(v, var_inc);
 }
-inline void Solver::var_bump_activity(int v, int var_inc) {
 
+inline void Solver::var_bump_activity(int v, double inc) {
+	// rescale if var activities exceed a certain value
+	if ((_activities[v] += inc) >= 1e20) {
+		for (size_t i = 0; i < num_variables(); i++) {
+			_activities[i] *= 1e-20;
+		}
+		var_inc *= 1e-20;
+	}
+
+	// update variable order heap
+	// (bubble up this variable in the heap)
+	if (_order_heap.in_heap(v)) {
+		_order_heap.decrease(v);
+	}
 }
 
 inline void Solver::var_decay_activity() {
-
+	var_inc *= (1 / var_decay); 
 }
 
 // TODO: implementation
 inline void Solver::cla_bump_activity(Clause& c) {
-
+	
 } 
 
 inline void Solver::cla_decay_activity() {
@@ -513,9 +548,6 @@ inline int Solver::reason(int v) const {
 inline void Solver::_new_decision_level() {
 	_trail_lim.push_back(_trail.size());
 }
-
-
-
 
 
 
