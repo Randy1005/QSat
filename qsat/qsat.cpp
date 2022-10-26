@@ -265,7 +265,6 @@ int Solver::propagate() {
 
 
 bool Solver::search() {
-	
 	std::vector<Literal> learnt_clause;
 	int backtrack_level;
 	
@@ -296,7 +295,22 @@ bool Solver::search() {
 			}
 			std::cout << "\n";
 			std::cout << "bt_lvl: " << backtrack_level << "\n";
+		
+
+			// undo everything until the backtrack level
+			// TODO: cancel_until(bt_level)
 			
+			if (learnt_clause.size() == 1) {
+			 // immediately enqueue the only literal
+			 unchecked_enqueue(learnt_clause[0], CREF_UNDEF);
+			}
+			else {
+				
+				// bump this learnt clauses' '
+
+			}
+
+
 			return false;
 		}
 		else {
@@ -400,7 +414,7 @@ void Solver::analyze(int confl_cref,
 
 
 	// TODO: we could implement clause simplification
-	// before calculating the backtrack level
+	// before calculating the backtrack level here
 
 
 	// find the correct backtrack level

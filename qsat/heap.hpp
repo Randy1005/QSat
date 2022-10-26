@@ -170,9 +170,7 @@ public:
    * newly inserted node
    */
   void insert(int v) {
-    // if (v + 1 > static_cast<int>(indices.size())) {
-      indices.resize(lt.activities.size(), -1);
-    //}
+    indices.resize(lt.activities.size(), -1);
 		
     // pre-condition:
     // this variable must NOT exist in heap

@@ -117,8 +117,13 @@ struct Clause {
 
   std::vector<Literal> literals;
 
-	// is this a learnt clause?
+	// a learnt clause or not
 	bool learnt = false;
+
+	// clause activity
+	// (for reducing clause database)
+	double activity = 0;
+
 };
 
 // constant:
@@ -390,7 +395,6 @@ private:
 	 */
 	void _new_decision_level();
 
-
 	/**
 	 * @brief pick branch literal
 	 * based on variable activities (order_heap)
@@ -398,9 +402,14 @@ private:
 	 */
 	Literal _pick_branch_lit();
 
-
   std::vector<Clause> _clauses; 
-  
+
+	// learnt clauses
+	// stores the index to the learnt clauses
+	// we still store the actual clause objects in _clauses
+	std::vector<int> _learnts;
+
+
   // assignment vector 
   std::vector<Status> _assigns;
   
@@ -432,8 +441,6 @@ private:
 	// NOTE: no more explicit propagation queue defined
 	int _qhead;
 
-
-
 	// random device to seed the random number generator
 	std::random_device _rd;	
 	
@@ -444,7 +451,7 @@ private:
 	// distributions
 	std::uniform_int_distribution<int> _uint_dist;
 
-
+	
 	/**
 	 * some temp data structures to prevent
 	 * allocation overhead

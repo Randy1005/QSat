@@ -19,7 +19,7 @@ int main(int argc, char* argv[]) {
 	s.read_dimacs(argv[1]);
 	
 
-	bool res = s.search();
+	s.search();
 
 	// a lucky example with no conflicts
 	/*
