@@ -40,15 +40,15 @@ class Heap {
    * right child = (n+1)*2
    * parent = (n-1)/2
    */
-  int left(int i) {
+  int left(int i) const {
     return i * 2 + 1;
   }
 
-  int right(int i) {
+  int right(int i) const {
     return (i + 1) * 2;
   }
 
-  int parent(int i) {
+  int parent(int i) const {
     return (i - 1) >> 1;
   }
 
@@ -205,11 +205,6 @@ public:
 
     return var;
   }
-
-
-
-
-
 
 };
 

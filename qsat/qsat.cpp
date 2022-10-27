@@ -29,10 +29,13 @@ Clause::Clause(std::vector<Literal>&& lits, bool is_learnt) :
 Solver::Solver() :
   _order_heap(VarOrderLt(_activities)),
 	_qhead(0),
-
+	
+	// TODO: consider making these into a cli option
 	var_inc(1),
 	cla_inc(1),
 	var_decay(0.95),
+	cla_decay(0.999),
+	phase_saving(0),
 
 	_mtrng(_rd())
 {
@@ -258,7 +261,6 @@ int Solver::propagate() {
 		}	
 	}
 	
-	
 	propagations += num_props;
 	return confl_cref;
 }
@@ -272,15 +274,8 @@ bool Solver::search() {
 		int confl_cref = propagate();
 		if (confl_cref != CREF_UNDEF) {
 			// conflict encountered!
-			std::cout << "conflict!\n";
-			
-			std::cout << "CONFLICT clause:\n";
-			Clause& c = _clauses[confl_cref];
-			for (int i = 0; i < c.literals.size(); i++) {
-				std::cout << c.literals[i].id << ", ";
-			}
-			std::cout << "\n";
-
+			std::cout << "conflict!\n";	
+			conflicts++;
 			if (decision_level() == 0) {
 				// top level conflict : UNSAT
 				return false;
@@ -298,27 +293,68 @@ bool Solver::search() {
 		
 
 			// undo everything until the backtrack level
-			// TODO: cancel_until(bt_level)
+			/*
+			std::cout << "_assigns: " << num_assigns() << "\n";
+			std::cout << "decision_level: " << decision_level() << "\n";
+			std::cout << "trail:\n";
+			for (int i = 0; i < _trail.size(); i++) {
+				std::cout << _trail[i].id << ", ";
+			}
+			std::cout << "\n";
+			std::cout << "heap size: " << _order_heap.size() << "\n";
+			*/
 			
+			_cancel_until(backtrack_level);
+			
+			/*
+			std::cout << "REVERTED....\n";
+			std::cout << "_assigns: " << num_assigns() << "\n";
+			std::cout << "decision_level: " << decision_level() << "\n";
+			std::cout << "trail:\n";
+			for (int i = 0; i < _trail.size(); i++) {
+				std::cout << _trail[i].id << ", ";
+			}
+			std::cout << "\n";
+			std::cout << "heap size: " << _order_heap.size() << "\n";
+			*/
+
 			if (learnt_clause.size() == 1) {
 			 // immediately enqueue the only literal
 			 unchecked_enqueue(learnt_clause[0], CREF_UNDEF);
 			}
 			else {
+				// store the learnt clause
+				int learnt_cref = _clauses.size();
+				_learnts.push_back(learnt_cref);
+				_clauses.push_back(Clause(learnt_clause));
 				
-				// bump this learnt clauses' '
+				// initialize watches for this clause
+				_attach_clause(learnt_cref);
 
+				// bump this learnt clauses' activity
+				cla_bump_activity(_clauses[learnt_cref]);
+				
+				// learnt[0] immediately becomes the next
+				// candidate to propagate
+				unchecked_enqueue(learnt_clause[0], learnt_cref);
 			}
 
+			var_decay_activity();
+			cla_decay_activity();
 
 			return false;
 		}
 		else {
 			// no conflict, we can continue making decisions
+			
+			// TODO: exceed conflict budget, should restart
 
+			// TODO: exceed max_learnt, should reduce clause database
+			
+			
+			decisions++;
 			Literal next_lit = _pick_branch_lit();
 			
-
 			std::cout << "#DECISION lit: " << next_lit.id << "\n";
 
 			if (next_lit == LIT_UNDEF) {
@@ -330,9 +366,7 @@ bool Solver::search() {
 			// begin new decision level
 			_new_decision_level();
 			unchecked_enqueue(next_lit, CREF_UNDEF);
-
 		}
-	
 	}
 
 
@@ -448,7 +482,7 @@ void Solver::analyze(int confl_cref,
 
 
 void Solver::_attach_clause(const int c_id) {
-	std::vector<Literal>& lits = _clauses[c_id].literals;
+	const std::vector<Literal>& lits = _clauses[c_id].literals;
 	watches[(~lits[0]).id].push_back(Watcher(c_id, lits[1]));
 	watches[(~lits[1]).id].push_back(Watcher(c_id, lits[0]));
 }
@@ -494,7 +528,6 @@ Literal Solver::_pick_branch_lit() {
 
 	// activity-based decision
 	while (next == VAR_UNDEF || value(next) != Status::UNDEFINED) {
-		
 		if (_order_heap.empty()) {
 			next = VAR_UNDEF;
 			break;
@@ -513,17 +546,46 @@ Literal Solver::_pick_branch_lit() {
 	else {
 		// WARNING:
 		// variable stored in heap are indexed from 0
-		// but our interface requires it to index from 1
+		// but our lit(var) interface requires it to index from 1
 		// BE VERY CAUTIOUS in the future
 		Literal p(next + 1);
-		
 		return (_uint_dist(_mtrng) % 2) ? p : ~p;	
 	}
 
 }
 
+void Solver::_cancel_until(int level) {
+	if (decision_level() > level) {
+		for (int u = _trail.size() - 1; u >= _trail_lim[level]; u--) {
+			int v = var(_trail[u]);
+			
+			// undo assignment
+			_assigns[v] = Status::UNDEFINED;
+
+			// TODO: implement phase saving?
+			if (phase_saving > 1 || (phase_saving == 1 && u > _trail_lim.back())) {
+			
+			}
+
+			// re-insert variables into heap
+			// they were removed when they were selected for propagtion
+			_insert_var_order(v);
+		}
+
+		// point qhead to 'level'
+		_qhead = _trail_lim[level];
+		
+		// shrink trail
+		_trail.resize(_trail_lim[level]);
+
+		// revert trail_lim
+		_trail_lim.resize(level);
+	}
+
+}
+
+
 void Solver::_insert_var_order(int v) {
-	// TODO: somehow not inserting all the variables??? 
 	if (!_order_heap.in_heap(v)) {
     _order_heap.insert(v);
 	}

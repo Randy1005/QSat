@@ -334,11 +334,18 @@ public:
 
 	// statistic variables
 	uint64_t propagations = 0;
+	uint64_t conflicts = 0;
+	uint64_t decisions = 0;
 
 	// user-configurable variables
 	double var_inc;
 	double cla_inc;
 	double var_decay;
+	double cla_decay;
+	
+	// configurable phase-saving [0: no, 1: limited, 2: full]
+	int phase_saving;
+
 private:
 
   /**
@@ -401,6 +408,14 @@ private:
 	 * prioritize which literal to propagate first
 	 */
 	Literal _pick_branch_lit();
+
+
+	/**
+	 * @ cancel until
+	 * revert the state of the solver to a certain level
+	 * (keeping all assignments at 'level' but not beyond)
+	 */
+	void _cancel_until(int level);
 
   std::vector<Clause> _clauses; 
 
@@ -533,13 +548,19 @@ inline void Solver::var_decay_activity() {
 	var_inc *= (1 / var_decay); 
 }
 
-// TODO: implementation
 inline void Solver::cla_bump_activity(Clause& c) {
-	
+	// rescale clause activities if exceed a
+	// certain large value
+	if ((c.activity += cla_inc) >= 1e20) {
+		for (const auto& l : _learnts) {
+			_clauses[l].activity *= 1e-20;
+		}
+		cla_inc *= 1e-20;
+	}
 } 
 
 inline void Solver::cla_decay_activity() {
-
+	cla_inc *= (1 / cla_decay);
 }
 
 
