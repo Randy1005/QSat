@@ -162,9 +162,9 @@ void Solver::add_clause(const std::vector<Literal>& lits) {
 int Solver::propagate() {
 	int confl_cref = CREF_UNDEF;
 	int num_props = 0;
-
+	
 	while (_qhead < _trail.size()) {
-		// move qhead forward, and get an enqueued face p
+		// move qhead forward, and get an enqueued fact p
 		// p is the literal we're propagating
 		Literal p = _trail[_qhead++];
 		num_props++;	
@@ -271,10 +271,12 @@ Status Solver::search() {
 	for (;;) {
 		
 		// simple budget check
-		if (conflicts >= 10000) {
+		/*
+		if (conflicts >= 30000) {
 			std::cout << "budget exceeded, terminating search ...\n";
 			return Status::UNDEFINED;
 		}
+		*/
 		
 		int confl_cref = propagate();
 		if (confl_cref != CREF_UNDEF) {
@@ -288,34 +290,46 @@ Status Solver::search() {
 			
 			learnt_clause.clear();
 			analyze(confl_cref, learnt_clause, backtrack_level);	
-		
+			
 			// undo everything until the backtrack level
 			_cancel_until(backtrack_level);
-			
-			
-			/*
+				
+
+			/**
+			 * FIXME: CONFLICT ANALYSIS
+			 * somehow adding learnt clauses
+			 * would make the clause database explode
+			 * and seems to be learning the same clauses over and over again
+			 * at some point, even for small benchmarks (sat_v20_c91.cnf)
+			 */
 			if (learnt_clause.size() == 1) {
-			 // immediately enqueue the only literal
-			 unchecked_enqueue(learnt_clause[0], CREF_UNDEF);
+				// immediately enqueue the only literal
+				// unchecked_enqueue(learnt_clause[0], CREF_UNDEF);
 			}
 			else {
 				// store the learnt clause
+				/*
 				int learnt_cref = _clauses.size();
+				std::cout << "learnt cref = " << learnt_cref << "\n";
+				
 				_learnts.push_back(learnt_cref);
 				_clauses.push_back(Clause(learnt_clause));
-				
+				for (int i = 0; i < _clauses[learnt_cref].literals.size(); i++) {
+					std::cout << _clauses[learnt_cref].literals[i].id << ", ";
+				}
+				std::cout << "\n";
+					
 				// initialize watches for this clause
 				_attach_clause(learnt_cref);
 
 				// bump this learnt clauses' activity
 				cla_bump_activity(_clauses[learnt_cref]);
-				
+					
 				// learnt[0] immediately becomes the next
 				// candidate to propagate
 				unchecked_enqueue(learnt_clause[0], learnt_cref);
+				*/
 			}
-			*/
-
 
 			var_decay_activity();
 			cla_decay_activity();
@@ -329,7 +343,6 @@ Status Solver::search() {
 
 			decisions++;
 			Literal next_lit = _pick_branch_lit();
-			
 			if (next_lit == LIT_UNDEF) {
 				print_assigns();
 				return Status::TRUE;
@@ -380,6 +393,19 @@ void Solver::analyze(int confl_cref,
 		for (size_t j = (p == LIT_UNDEF) ? 0 : 1; j < confl_c.literals.size(); j++) {
 			Literal q = confl_c.literals[j];
 			
+			if (!_seen[var(q)]) {
+				_seen[var(q)] = 1;
+			
+				if (level(var(q)) == decision_level()) {
+					path_cnt++;
+				}
+				else if (level(var(q)) > 0) {
+					out_learnt.push_back(~q);
+				}
+			}
+
+	
+			/*
 			// if we haven't checked this variable yet
 			// and its decision level > 0
 			// that means this variable is a contribution to
@@ -403,8 +429,9 @@ void Solver::analyze(int confl_cref,
 					out_learnt.push_back(q);
 				}
 			}
+			*/
 		}
-
+		
 		// select the next literal to look at
 		// skip the ones that are already examined
 		while (!_seen[var(_trail[index--])]);
@@ -426,8 +453,7 @@ void Solver::analyze(int confl_cref,
 
 	// find the correct backtrack level
 	if (out_learnt.size() == 1) {
-		// meaning it's a top level conflict
-		out_btlevel = 0;
+		out_btlevel = 0; 
 	}			
 	else {
 		int max = 1;
@@ -442,11 +468,11 @@ void Solver::analyze(int confl_cref,
 		}
 
 		// swap in this literal at index 1
-		Literal p = out_learnt[max];
+		Literal r = out_learnt[max];
 		out_learnt[max] = out_learnt[1];
-		out_learnt[1] = p;
+		out_learnt[1] = r;
 		
-		out_btlevel = level(var(p));
+		out_btlevel = level(var(r));
 	}
 
 	// clear the seen list
@@ -605,7 +631,6 @@ Status Solver::solve() {
 	while (status == Status::UNDEFINED) {
 		status = search();	
 		// TODO: simple budget check for now
-		// if propagations or conflicts is too many, then break search
 		if (conflicts >= 10000) {
 			break;
 		}
