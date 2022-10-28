@@ -266,17 +266,15 @@ int Solver::propagate() {
 
 Status Solver::search() {
 	std::vector<Literal> learnt_clause;
-	int backtrack_level;
 
 	for (;;) {
 		
+		int backtrack_level = 0;
 		// simple budget check
-		/*
-		if (conflicts >= 30000) {
-			std::cout << "budget exceeded, terminating search ...\n";
+		if (conflicts >= 10000) {
+			std::cout << "conflict budget exceeded, terminating search ...\n";
 			return Status::UNDEFINED;
 		}
-		*/
 		
 		int confl_cref = propagate();
 		if (confl_cref != CREF_UNDEF) {
@@ -301,6 +299,7 @@ Status Solver::search() {
 			 * would make the clause database explode
 			 * and seems to be learning the same clauses over and over again
 			 * at some point, even for small benchmarks (sat_v20_c91.cnf)
+			 * 
 			 */
 			if (learnt_clause.size() == 1) {
 				// immediately enqueue the only literal
@@ -401,6 +400,7 @@ void Solver::analyze(int confl_cref,
 				}
 				else if (level(var(q)) > 0) {
 					out_learnt.push_back(~q);
+					out_btlevel = std::max(out_btlevel, level(var(q)));
 				}
 			}
 
@@ -452,6 +452,7 @@ void Solver::analyze(int confl_cref,
 
 
 	// find the correct backtrack level
+	/*
 	if (out_learnt.size() == 1) {
 		out_btlevel = 0; 
 	}			
@@ -474,6 +475,7 @@ void Solver::analyze(int confl_cref,
 		
 		out_btlevel = level(var(r));
 	}
+	*/
 
 	// clear the seen list
 	_seen.clear();
