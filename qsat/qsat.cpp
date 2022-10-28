@@ -525,7 +525,7 @@ Literal Solver::_pick_branch_lit() {
 		// TODO: for debugging purposes, I choose the same polarity
 		// Remember to change this 
 		Literal p(next + 1);
-		return (_uint_dist(_mtrng) % 2) ? p : p;	
+		return (_uint_dist(_mtrng) % 2) ? ~p : p;	
 	}
 
 }
