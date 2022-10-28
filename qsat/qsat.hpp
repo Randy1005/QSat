@@ -52,6 +52,7 @@ struct Literal {
   @brief constructs a literal with a given variable
   */
   Literal(int var);
+
   bool operator == (const Literal& p) const {
     return id == p.id;
   }
@@ -479,7 +480,7 @@ private:
 	// a list which records whether a variable is examined
 	// (may be used in multiple methods)
 	// values are just 0 or 1
-	std::vector<char> _seen;
+	std::vector<bool> _seen;
 
   // output file stream to write to z3py
   std::ofstream _z3_ofs;

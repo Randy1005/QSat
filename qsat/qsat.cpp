@@ -266,16 +266,9 @@ int Solver::propagate() {
 
 Status Solver::search() {
 	std::vector<Literal> learnt_clause;
+	int backtrack_level = 0;
 
 	for (;;) {
-		
-		int backtrack_level = 0;
-		// simple budget check
-		if (conflicts >= 10000) {
-			std::cout << "conflict budget exceeded, terminating search ...\n";
-			return Status::UNDEFINED;
-		}
-		
 		int confl_cref = propagate();
 		if (confl_cref != CREF_UNDEF) {
 			// conflict encountered!
@@ -292,31 +285,15 @@ Status Solver::search() {
 			// undo everything until the backtrack level
 			_cancel_until(backtrack_level);
 				
-
-			/**
-			 * FIXME: CONFLICT ANALYSIS
-			 * somehow adding learnt clauses
-			 * would make the clause database explode
-			 * and seems to be learning the same clauses over and over again
-			 * at some point, even for small benchmarks (sat_v20_c91.cnf)
-			 * 
-			 */
 			if (learnt_clause.size() == 1) {
 				// immediately enqueue the only literal
-				// unchecked_enqueue(learnt_clause[0], CREF_UNDEF);
+				unchecked_enqueue(learnt_clause[0], CREF_UNDEF);
 			}
 			else {
 				// store the learnt clause
-				/*
 				int learnt_cref = _clauses.size();
-				std::cout << "learnt cref = " << learnt_cref << "\n";
-				
 				_learnts.push_back(learnt_cref);
 				_clauses.push_back(Clause(learnt_clause));
-				for (int i = 0; i < _clauses[learnt_cref].literals.size(); i++) {
-					std::cout << _clauses[learnt_cref].literals[i].id << ", ";
-				}
-				std::cout << "\n";
 					
 				// initialize watches for this clause
 				_attach_clause(learnt_cref);
@@ -327,7 +304,6 @@ Status Solver::search() {
 				// learnt[0] immediately becomes the next
 				// candidate to propagate
 				unchecked_enqueue(learnt_clause[0], learnt_cref);
-				*/
 			}
 
 			var_decay_activity();
@@ -361,7 +337,7 @@ Status Solver::search() {
 void Solver::analyze(int confl_cref, 
 		std::vector<Literal>& out_learnt, 
 		int& out_btlevel) {
-	
+
 	int path_cnt = 0;
 	Literal p = LIT_UNDEF;
 	
@@ -392,27 +368,13 @@ void Solver::analyze(int confl_cref,
 		for (size_t j = (p == LIT_UNDEF) ? 0 : 1; j < confl_c.literals.size(); j++) {
 			Literal q = confl_c.literals[j];
 			
-			if (!_seen[var(q)]) {
-				_seen[var(q)] = 1;
-			
-				if (level(var(q)) == decision_level()) {
-					path_cnt++;
-				}
-				else if (level(var(q)) > 0) {
-					out_learnt.push_back(~q);
-					out_btlevel = std::max(out_btlevel, level(var(q)));
-				}
-			}
-
-	
-			/*
 			// if we haven't checked this variable yet
 			// and its decision level > 0
 			// that means this variable is a contribution to
 			// conflicts, so bump its activity
 			if (!_seen[var(q)] && level(var(q)) > 0) {
 				var_bump_activity(var(q));
-				_seen[var(q)] = 1;
+				_seen[var(q)] = true;
 			
 				// if level(q) > current decision level
 				// that means we're have not yet reached the
@@ -429,7 +391,6 @@ void Solver::analyze(int confl_cref,
 					out_learnt.push_back(q);
 				}
 			}
-			*/
 		}
 		
 		// select the next literal to look at
@@ -446,13 +407,11 @@ void Solver::analyze(int confl_cref,
 	// add the asserting literal
 	out_learnt[0] = ~p;
 
-
 	// TODO: we could implement clause simplification
 	// before calculating the backtrack level here
 
 
 	// find the correct backtrack level
-	/*
 	if (out_learnt.size() == 1) {
 		out_btlevel = 0; 
 	}			
@@ -475,10 +434,11 @@ void Solver::analyze(int confl_cref,
 		
 		out_btlevel = level(var(r));
 	}
-	*/
 
-	// clear the seen list
-	_seen.clear();
+	// reset the seen list
+	for (int i = 0; i < _seen.size(); i++) {
+		_seen[i] = false;
+	}
 }
 
 
@@ -524,7 +484,7 @@ Literal Solver::_pick_branch_lit() {
 	// we use only activity-based for now
 	
 	int next = VAR_UNDEF;
-	
+
 	// TODO: make a random decision first?
 
 	// activity-based decision
@@ -549,11 +509,12 @@ Literal Solver::_pick_branch_lit() {
 		// variable stored in heap are indexed from 0
 		// but our lit(var) interface requires it to index from 1
 		// BE VERY CAUTIOUS in the future
-		//
-		// TODO: for debugging purposes, I choose the same polarity
-		// Remember to change this 
+		
+		// FIXME: somehow using random polarity or only ~p
+		// causes the solver to crash
+		// for now, use only p
 		Literal p(next + 1);
-		return (_uint_dist(_mtrng) % 2) ? ~p : p;	
+		return p;	
 	}
 
 }
@@ -615,7 +576,7 @@ void Solver::_new_var(int v) {
 	watches.resize(2 * num_variables());
 
 	// resize the seen list
-	_seen.resize(num_variables(), 0);
+	_seen.resize(num_variables(), false);
 }
 
 void Solver::reset() {
@@ -632,10 +593,6 @@ Status Solver::solve() {
 	// TODO: budget can be defined too, conflict budget and propagtion budget
 	while (status == Status::UNDEFINED) {
 		status = search();	
-		// TODO: simple budget check for now
-		if (conflicts >= 10000) {
-			break;
-		}
 	}
 
 	if (status == Status::TRUE) {

@@ -26,7 +26,8 @@ int main(int argc, char* argv[]) {
   std::cout << "Run time: " 
             << elapsed_time.count()
             << " ms\n";
-  
+ 
+	std::cout << "conflicts: " << s.conflicts << "\n";
 	if (res == qsat::Status::TRUE) {
 		std::cout << "+++ SAT +++\n";
 	}
