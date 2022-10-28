@@ -18,9 +18,8 @@ int main(int argc, char* argv[]) {
 
 	s.read_dimacs(argv[1]);
 	
-
-	s.search();
-
+	qsat::Status res = s.solve();
+	
 	// a lucky example with no conflicts
 	/*
 	// watches (upon completing add clauses)
@@ -93,15 +92,21 @@ int main(int argc, char* argv[]) {
 
 
   end_time = std::chrono::steady_clock::now(); 
-	
-
-
-
   std::chrono::duration<double, std::milli> elapsed_time = end_time - start_time;  
   std::cout << "Run time: " 
             << elapsed_time.count()
             << " ms\n";
   
+	if (res == qsat::Status::TRUE) {
+		std::cout << "+++ SAT +++\n";
+	}
+	else if (res == qsat::Status::UNDEFINED) {
+		std::cout << "--- ran out of budget? ---\n";
+	}
+	else {
+		std::cout << "--- UNSAT ---\n";
+	}
+
 
   return 0;
 }

@@ -21,3 +21,6 @@ intel_task_files/*
 
 # swp files
 *.swp
+
+# ctags
+tags

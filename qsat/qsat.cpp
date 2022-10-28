@@ -167,8 +167,6 @@ int Solver::propagate() {
 		// move qhead forward, and get an enqueued face p
 		// p is the literal we're propagating
 		Literal p = _trail[_qhead++];
-		
-		std::cout << "propagating lit " << p.id << "...\n";
 		num_props++;	
 		// obtain the watchers of this literal
 		// std::vector<Watcher> ws = std::move(watches[p.id]);
@@ -266,58 +264,36 @@ int Solver::propagate() {
 }
 
 
-bool Solver::search() {
+Status Solver::search() {
 	std::vector<Literal> learnt_clause;
 	int backtrack_level;
-	
+
 	for (;;) {
+		
+		// simple budget check
+		if (conflicts >= 10000) {
+			std::cout << "budget exceeded, terminating search ...\n";
+			return Status::UNDEFINED;
+		}
+		
 		int confl_cref = propagate();
 		if (confl_cref != CREF_UNDEF) {
 			// conflict encountered!
-			std::cout << "conflict!\n";	
 			conflicts++;
+
 			if (decision_level() == 0) {
 				// top level conflict : UNSAT
-				return false;
+				return Status::FALSE;
 			}
 			
 			learnt_clause.clear();
 			analyze(confl_cref, learnt_clause, backtrack_level);	
 		
-			std::cout << "learnt clause:\n";
-			for (int i = 0; i < learnt_clause.size(); i++) {
-				std::cout << learnt_clause[i].id << ", ";
-			}
-			std::cout << "\n";
-			std::cout << "bt_lvl: " << backtrack_level << "\n";
-		
-
 			// undo everything until the backtrack level
-			/*
-			std::cout << "_assigns: " << num_assigns() << "\n";
-			std::cout << "decision_level: " << decision_level() << "\n";
-			std::cout << "trail:\n";
-			for (int i = 0; i < _trail.size(); i++) {
-				std::cout << _trail[i].id << ", ";
-			}
-			std::cout << "\n";
-			std::cout << "heap size: " << _order_heap.size() << "\n";
-			*/
-			
 			_cancel_until(backtrack_level);
 			
+			
 			/*
-			std::cout << "REVERTED....\n";
-			std::cout << "_assigns: " << num_assigns() << "\n";
-			std::cout << "decision_level: " << decision_level() << "\n";
-			std::cout << "trail:\n";
-			for (int i = 0; i < _trail.size(); i++) {
-				std::cout << _trail[i].id << ", ";
-			}
-			std::cout << "\n";
-			std::cout << "heap size: " << _order_heap.size() << "\n";
-			*/
-
 			if (learnt_clause.size() == 1) {
 			 // immediately enqueue the only literal
 			 unchecked_enqueue(learnt_clause[0], CREF_UNDEF);
@@ -338,11 +314,11 @@ bool Solver::search() {
 				// candidate to propagate
 				unchecked_enqueue(learnt_clause[0], learnt_cref);
 			}
+			*/
+
 
 			var_decay_activity();
 			cla_decay_activity();
-
-			return false;
 		}
 		else {
 			// no conflict, we can continue making decisions
@@ -350,17 +326,13 @@ bool Solver::search() {
 			// TODO: exceed conflict budget, should restart
 
 			// TODO: exceed max_learnt, should reduce clause database
-			
-			
+
 			decisions++;
 			Literal next_lit = _pick_branch_lit();
 			
-			std::cout << "#DECISION lit: " << next_lit.id << "\n";
-
 			if (next_lit == LIT_UNDEF) {
-				std::cout << "next_lit undef, found a solution!\n";
 				print_assigns();
-				return true;
+				return Status::TRUE;
 			}
 
 			// begin new decision level
@@ -390,6 +362,7 @@ void Solver::analyze(int confl_cref,
 	do {
 		assert(confl_cref != CREF_UNDEF);
 		Clause& confl_c = _clauses[confl_cref];
+
 		// if this conflict clause is already learnt
 		// i.e. a previously learnt clause causing conflict
 		// this clause should be considered more 'active'
@@ -481,10 +454,10 @@ void Solver::analyze(int confl_cref,
 }
 
 
-void Solver::_attach_clause(const int c_id) {
-	const std::vector<Literal>& lits = _clauses[c_id].literals;
-	watches[(~lits[0]).id].push_back(Watcher(c_id, lits[1]));
-	watches[(~lits[1]).id].push_back(Watcher(c_id, lits[0]));
+void Solver::_attach_clause(const int cref) {
+	const std::vector<Literal>& lits = _clauses[cref].literals;
+	watches[(~lits[0]).id].push_back(Watcher(cref, lits[1]));
+	watches[(~lits[1]).id].push_back(Watcher(cref, lits[0]));
 }
 
 // TODO: will be needed when we reduce learnt clauses
@@ -548,8 +521,11 @@ Literal Solver::_pick_branch_lit() {
 		// variable stored in heap are indexed from 0
 		// but our lit(var) interface requires it to index from 1
 		// BE VERY CAUTIOUS in the future
+		//
+		// TODO: for debugging purposes, I choose the same polarity
+		// Remember to change this 
 		Literal p(next + 1);
-		return (_uint_dist(_mtrng) % 2) ? p : ~p;	
+		return (_uint_dist(_mtrng) % 2) ? p : p;	
 	}
 
 }
@@ -611,7 +587,7 @@ void Solver::_new_var(int v) {
 	watches.resize(2 * num_variables());
 
 	// resize the seen list
-	_seen.resize(num_variables());
+	_seen.resize(num_variables(), 0);
 }
 
 void Solver::reset() {
@@ -619,8 +595,34 @@ void Solver::reset() {
   _clauses.clear();
 }
 
-bool Solver::solve() {
+Status Solver::solve() {
+	_model.clear();
+	// define search status
+	Status status = Status::UNDEFINED;
+	
+	// TODO: restart configurations can be implemented
+	// TODO: budget can be defined too, conflict budget and propagtion budget
+	while (status == Status::UNDEFINED) {
+		status = search();	
+		// TODO: simple budget check for now
+		// if propagations or conflicts is too many, then break search
+		if (conflicts >= 10000) {
+			break;
+		}
+	}
 
+	if (status == Status::TRUE) {
+		// extend and copy model
+		_model.resize(num_variables(), Status::UNDEFINED);
+		for (int i = 0; i < num_variables(); i++) {
+			_model[i] = value(i);
+		}
+	}
+	
+
+	// revert all the way back to level 0
+	_cancel_until(0);
+	return status;
 }
 
 const std::vector<Clause>& Solver::clauses() const {

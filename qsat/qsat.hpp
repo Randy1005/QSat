@@ -211,7 +211,7 @@ public:
   If satisfiable, also construct a solution for the user
   @returns true if the input cnf is satisfiable, otherwise return false
   */
-  bool solve();
+  Status solve();
 
   /**
   @brief a getter method for the stored clauses
@@ -303,7 +303,7 @@ public:
 	 * main search loop that runs BCP
 	 * and resolves conflict
 	 */
-	bool search(/* TODO: search parameters go here */);
+	Status search(/* TODO: search parameters go here */);
 
 	/**
 	 * @brief analyze
@@ -427,7 +427,10 @@ private:
 
   // assignment vector 
   std::vector<Status> _assigns;
-  
+	
+	// solution model (if SAT)
+	std::vector<Status> _model;
+
   // heuristic activities for variables
   std::vector<double> _activities;
  

@@ -56,6 +56,12 @@ TEST_CASE("Literal Operators + Evaluation" * doctest::timeout(300)) {
 
   REQUIRE(s.value(a) == qsat::Status::FALSE);
   REQUIRE(s.value(b) == qsat::Status::FALSE);
+
+	s.assign(var(a), 0);
+	REQUIRE(s.value(a) == qsat::Status::TRUE);
+
+	s.assign(var(b), 1);
+	REQUIRE(s.value(b) == qsat::Status::TRUE);
 }
 
 /*
