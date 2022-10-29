@@ -515,9 +515,12 @@ Literal Solver::_pick_branch_lit() {
 		// random polarity performs "sometimes" better than
 		// fixed polarity, in terms of number of conflicts
 		// come up with a better polarity mode in the future
+		
+		// FIXME: still crashes if we enable random polarity
+		// possibly caused by other bugs 
 		Literal p(next + 1);
-		int rnd = static_cast<int>(_uint_dist(_mtrng)) % 2;
-		return rnd ? ~p : p;	
+		// int rnd = static_cast<int>(_uint_dist(_mtrng)) % 2;
+		return p;	
 	}
 
 }
