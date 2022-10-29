@@ -510,11 +510,14 @@ Literal Solver::_pick_branch_lit() {
 		// but our lit(var) interface requires it to index from 1
 		// BE VERY CAUTIOUS in the future
 		
-		// FIXME: somehow using random polarity or only ~p
-		// causes the solver to crash
-		// for now, use only p
+
+		// TODO:
+		// random polarity performs "sometimes" better than
+		// fixed polarity, in terms of number of conflicts
+		// come up with a better polarity mode in the future
 		Literal p(next + 1);
-		return p;	
+		int rnd = static_cast<int>(_uint_dist(_mtrng)) % 2;
+		return rnd ? ~p : p;	
 	}
 
 }
