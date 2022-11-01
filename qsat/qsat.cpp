@@ -519,18 +519,15 @@ Literal Solver::_pick_branch_lit() {
 		// variable stored in heap are indexed from 0
 		// but our lit(var) interface requires it to index from 1
 		// BE VERY CAUTIOUS in the future
-		
 
 		// TODO:
 		// random polarity performs "sometimes" better than
 		// fixed polarity, in terms of number of conflicts
 		// come up with a better polarity mode in the future
 		
-		// FIXME: still crashes if we enable random polarity
-		// possibly caused by other bugs 
 		Literal p(next + 1);
-		// int rnd = static_cast<int>(_uint_dist(_mtrng)) % 2;
-		return p;	
+		int rnd = static_cast<int>(_uni_int_dist(_mtrng)) % 2;
+		return rnd ? ~p : p;	
 	}
 
 }
@@ -543,7 +540,7 @@ void Solver::_cancel_until(int level) {
 			// undo assignment
 			_assigns[v] = Status::UNDEFINED;
 
-			// TODO: implement phase saving?
+			// TODO: implement phase saving
 			if (phase_saving > 1 || (phase_saving == 1 && u > _trail_lim.back())) {
 			
 			}

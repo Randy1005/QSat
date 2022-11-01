@@ -468,7 +468,7 @@ private:
 	std::mt19937 _mtrng;
 	
 	// distributions
-	std::uniform_int_distribution<int> _uint_dist;
+	std::uniform_int_distribution<int> _uni_int_dist;
 
 	/**
 	 * some temp data structures to prevent

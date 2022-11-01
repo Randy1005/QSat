@@ -1277,13 +1277,14 @@ Yellow	3rd-party/doctest/doctest.h	/^        Yellow,$/;"	e	enum:doctest::Color::
 Z	3rd-party/PEGTL/tao/pegtl/contrib/alphabet.hpp	/^   static const char Z = 'Z';  \/\/ NOLINT(readability-identifier-naming)$/;"	m	namespace:tao::pegtl::alphabet
 _activities	qsat/qsat.hpp	/^  std::vector<double> _activities;$/;"	m	class:qsat::Solver
 _assigns	qsat/qsat.hpp	/^  std::vector<Status> _assigns;$/;"	m	class:qsat::Solver
-_attach_clause	qsat/qsat.cpp	/^void Solver::_attach_clause(const int c_id) {$/;"	f	class:qsat::Solver
+_attach_clause	qsat/qsat.cpp	/^void Solver::_attach_clause(const int cref) {$/;"	f	class:qsat::Solver
 _cancel_until	qsat/qsat.cpp	/^void Solver::_cancel_until(int level) {$/;"	f	class:qsat::Solver
 _clauses	qsat/qsat.hpp	/^  std::vector<Clause> _clauses; $/;"	m	class:qsat::Solver
 _detach_clause	qsat/qsat.cpp	/^void Solver::_detach_clause(const int c_id) {$/;"	f	class:qsat::Solver
 _init	qsat/qsat.cpp	/^void Solver::_init() {$/;"	f	class:qsat::Solver
 _insert_var_order	qsat/qsat.cpp	/^void Solver::_insert_var_order(int v) {$/;"	f	class:qsat::Solver
 _learnts	qsat/qsat.hpp	/^	std::vector<int> _learnts;$/;"	m	class:qsat::Solver
+_model	qsat/qsat.hpp	/^	std::vector<Status> _model;$/;"	m	class:qsat::Solver
 _mtrng	qsat/qsat.hpp	/^	std::mt19937 _mtrng;$/;"	m	class:qsat::Solver
 _new_decision_level	qsat/qsat.hpp	/^inline void Solver::_new_decision_level() {$/;"	f	class:qsat::Solver
 _new_var	qsat/qsat.cpp	/^void Solver::_new_var(int v) {$/;"	f	class:qsat::Solver
@@ -1292,10 +1293,10 @@ _pick_branch_lit	qsat/qsat.cpp	/^Literal Solver::_pick_branch_lit() {$/;"	f	clas
 _qhead	qsat/qsat.hpp	/^	int _qhead;$/;"	m	class:qsat::Solver
 _rd	qsat/qsat.hpp	/^	std::random_device _rd;	$/;"	m	class:qsat::Solver
 _read_clause	qsat/qsat.cpp	/^void Solver::_read_clause(int variable, std::vector<Literal>& lits) { $/;"	f	class:qsat::Solver
-_seen	qsat/qsat.hpp	/^	std::vector<char> _seen;$/;"	m	class:qsat::Solver
+_seen	qsat/qsat.hpp	/^	std::vector<bool> _seen;$/;"	m	class:qsat::Solver
 _trail	qsat/qsat.hpp	/^  std::vector<Literal> _trail;$/;"	m	class:qsat::Solver
 _trail_lim	qsat/qsat.hpp	/^  std::vector<int> _trail_lim;$/;"	m	class:qsat::Solver
-_uint_dist	qsat/qsat.hpp	/^	std::uniform_int_distribution<int> _uint_dist;$/;"	m	class:qsat::Solver
+_uni_int_dist	qsat/qsat.hpp	/^	std::uniform_int_distribution<int> _uni_int_dist;$/;"	m	class:qsat::Solver
 _var_info	qsat/qsat.hpp	/^  std::vector<VarInfo> _var_info;$/;"	m	class:qsat::Solver
 _z3_ofs	qsat/qsat.hpp	/^  std::ofstream _z3_ofs;$/;"	m	class:qsat::Solver
 a	3rd-party/PEGTL/tao/pegtl/contrib/alphabet.hpp	/^   static const char a = 'a';$/;"	m	namespace:tao::pegtl::alphabet
@@ -1604,6 +1605,7 @@ chunk_size	3rd-party/PEGTL/tao/pegtl/buffer_input.hpp	/^      static constexpr s
 chunk_size	3rd-party/PEGTL/tao/pegtl/contrib/http.hpp	/^   struct chunk_size$/;"	s	namespace:tao::pegtl::http
 chunked_body	3rd-party/PEGTL/tao/pegtl/contrib/http.hpp	/^   struct chunked_body : seq< until< last_chunk, chunk >, trailer_part, abnf::CRLF > {};$/;"	s	namespace:tao::pegtl::http
 cla_bump_activity	qsat/qsat.hpp	/^inline void Solver::cla_bump_activity(Clause& c) {$/;"	f	class:qsat::Solver
+cla_decay	qsat/qsat.hpp	/^	double cla_decay;$/;"	m	class:qsat::Solver
 cla_decay_activity	qsat/qsat.hpp	/^inline void Solver::cla_decay_activity() {$/;"	f	class:qsat::Solver
 cla_inc	qsat/qsat.hpp	/^	double cla_inc;$/;"	m	class:qsat::Solver
 clause	qsat/qsat.hpp	/^	const Clause& clause(int i) const {$/;"	f	class:qsat::Solver
@@ -1621,6 +1623,7 @@ compare_expr_enum_ss_name	qsat/intel_task_grammar.hpp	/^struct compare_expr_enum
 compare_op	qsat/intel_task_grammar.hpp	/^  std::string compare_op;$/;"	m	struct:constraint_state
 compare_op	qsat/intel_task_grammar.hpp	/^struct compare_op : pegtl::sor<pegtl::one<'>'>,$/;"	s
 complete_trace	3rd-party/PEGTL/tao/pegtl/contrib/trace.hpp	/^   bool complete_trace( ParseInput&& in, States&&... st )$/;"	f	namespace:tao::pegtl
+conflicts	qsat/qsat.hpp	/^	uint64_t conflicts = 0;$/;"	m	class:qsat::Solver
 connection_option	3rd-party/PEGTL/tao/pegtl/contrib/http.hpp	/^   struct connection_option : token {};$/;"	s	namespace:tao::pegtl::http
 const	build/CMakeFiles/3.18.2/CompilerIdC/CMakeCCompilerId.c	10;"	d	file:
 constant	3rd-party/PEGTL/tao/pegtl/contrib/proto3.hpp	/^   struct constant : sor< bool_lit, seq< opt< sign >, float_lit >, seq< opt< sign >, int_lit >, str_lit, full_ident > {};$/;"	s	namespace:tao::pegtl::proto3
@@ -1684,6 +1687,7 @@ dec_num	qsat/intel_task_grammar.hpp	/^struct dec_num : pegtl::seq<digits, pegtl:
 dec_octet	3rd-party/PEGTL/tao/pegtl/contrib/uri.hpp	/^   struct dec_octet : maximum_rule< std::uint8_t > {};$/;"	s	namespace:tao::pegtl::uri
 decision_level	qsat/qsat.hpp	/^  int decision_level;$/;"	m	struct:qsat::VarInfo
 decision_level	qsat/qsat.hpp	/^  size_t decision_level() const {$/;"	f	class:qsat::Solver
+decisions	qsat/qsat.hpp	/^	uint64_t decisions = 0;$/;"	m	class:qsat::Solver
 decltype	3rd-party/PEGTL/tao/pegtl/contrib/parse_tree.hpp	/^         -> decltype( (void)Selector::transform( in, n, st... ) )$/;"	f	namespace:tao::pegtl::parse_tree::internal
 decltype	3rd-party/PEGTL/tao/pegtl/contrib/parse_tree.hpp	/^         -> decltype( (void)Selector::transform( n, st... ) )$/;"	f	namespace:tao::pegtl::parse_tree::internal
 decltype	3rd-party/PEGTL/tao/pegtl/contrib/remove_first_state.hpp	/^         -> decltype( Base::template apply0< Action >( in, st... ) )$/;"	f	struct:tao::pegtl::remove_first_state
@@ -2285,7 +2289,7 @@ lead_canonical_combining_class	3rd-party/PEGTL/tao/pegtl/contrib/icu/utf32.hpp	/
 lead_canonical_combining_class	3rd-party/PEGTL/tao/pegtl/contrib/icu/utf32.hpp	/^      template< std::uint8_t V > struct lead_canonical_combining_class : property_value< UCHAR_LEAD_CANONICAL_COMBINING_CLASS, V > {};$/;"	s	namespace:tao::pegtl::utf32_be::utf32_le::icu
 lead_canonical_combining_class	3rd-party/PEGTL/tao/pegtl/contrib/icu/utf8.hpp	/^   template< std::uint8_t V > struct lead_canonical_combining_class : property_value< UCHAR_LEAD_CANONICAL_COMBINING_CLASS, V > {};$/;"	s	namespace:tao::pegtl::utf8::icu
 learnt	qsat/qsat.hpp	/^	bool learnt = false;$/;"	m	struct:qsat::Clause
-left	qsat/heap.hpp	/^  int left(int i) {$/;"	f	class:qsat::Heap
+left	qsat/heap.hpp	/^  int left(int i) const {$/;"	f	class:qsat::Heap
 len	3rd-party/doctest/doctest.h	/^    static const unsigned len  = 24;      \/\/!OCLINT avoid private static members$/;"	m	class:doctest::String
 level	qsat/qsat.hpp	/^inline int Solver::level(int v) const {$/;"	f	class:qsat::Solver
 lf	3rd-party/PEGTL/tao/pegtl/eol.hpp	/^         struct lf : internal::lf_eol {};$/;"	s	struct:tao::pegtl::ascii::eol
@@ -2805,7 +2809,7 @@ package	3rd-party/PEGTL/tao/pegtl/contrib/proto3.hpp	/^   struct package : if_mu
 pad	3rd-party/PEGTL/tao/pegtl/rules.hpp	/^   template< typename Rule, typename Pad1, typename Pad2 = Pad1 > struct pad : internal::pad< Rule, Pad1, Pad2 > {};$/;"	s	namespace:tao::pegtl
 pad_opt	3rd-party/PEGTL/tao/pegtl/rules.hpp	/^   template< typename Rule, typename Pad > struct pad_opt : internal::pad_opt< Rule, Pad > {};$/;"	s	namespace:tao::pegtl
 padr	3rd-party/PEGTL/tao/pegtl/contrib/json.hpp	/^   struct padr : seq< R, star< P > > {};$/;"	s	namespace:tao::pegtl::json
-parent	qsat/heap.hpp	/^  int parent(int i) {$/;"	f	class:qsat::Heap
+parent	qsat/heap.hpp	/^  int parent(int i) const {$/;"	f	class:qsat::Heap
 parse	3rd-party/PEGTL/tao/pegtl/contrib/parse_tree.hpp	/^   [[nodiscard]] std::unique_ptr< Node > parse( ParseInput&& in, States&&... st )$/;"	f	namespace:tao::pegtl::parse_tree
 parse	3rd-party/PEGTL/tao/pegtl/contrib/parse_tree.hpp	/^   [[nodiscard]] std::unique_ptr< node > parse( ParseInput&& in, States&&... st )$/;"	f	namespace:tao::pegtl::parse_tree
 parse	3rd-party/PEGTL/tao/pegtl/contrib/trace.hpp	/^      bool parse( ParseInput&& in, States&&... st )$/;"	f	struct:tao::pegtl::tracer
@@ -3174,7 +3178,7 @@ rewind_guard	3rd-party/PEGTL/tao/pegtl/internal/rewind_guard.hpp	/^   class [[no
 rewind_mode	3rd-party/PEGTL/tao/pegtl/rewind_mode.hpp	/^   enum class rewind_mode : char$/;"	c	namespace:tao::pegtl
 rhs	qsat/qsat.hpp	/^  Clause& operator=(Clause&& rhs) = default;$/;"	m	struct:qsat::Clause
 rhs	qsat/qsat.hpp	/^  Clause& operator=(const Clause& rhs) = default;$/;"	m	struct:qsat::Clause
-right	qsat/heap.hpp	/^  int right(int i) {$/;"	f	class:qsat::Heap
+right	qsat/heap.hpp	/^  int right(int i) const {$/;"	f	class:qsat::Heap
 rotate_left	3rd-party/PEGTL/tao/pegtl/contrib/shuffle_states.hpp	/^      struct rotate_left$/;"	s	namespace:tao::pegtl::internal
 rotate_right	3rd-party/PEGTL/tao/pegtl/contrib/shuffle_states.hpp	/^      struct rotate_right$/;"	s	namespace:tao::pegtl::internal
 rpc	3rd-party/PEGTL/tao/pegtl/contrib/proto3.hpp	/^   struct rpc : if_must< keyword< 'r', 'p', 'c' >, sps, rpc_name, sps, rpc_type, sps, keyword< 'r', 'e', 't', 'u', 'r', 'n', 's' >, sps, rpc_type, sps, sor< semi, rpc_options > > {};$/;"	s	namespace:tao::pegtl::proto3
@@ -3189,7 +3193,7 @@ s_term	3rd-party/PEGTL/tao/pegtl/contrib/icu/utf32.hpp	/^      struct s_term : b
 s_term	3rd-party/PEGTL/tao/pegtl/contrib/icu/utf8.hpp	/^   struct s_term : binary_property< UCHAR_S_TERM > {};$/;"	s	namespace:tao::pegtl::utf8::icu
 scheme	3rd-party/PEGTL/tao/pegtl/contrib/uri.hpp	/^   struct scheme : seq< abnf::ALPHA, star< sor< abnf::ALPHA, abnf::DIGIT, one< '+', '-', '.' > > > > {};$/;"	s	namespace:tao::pegtl::uri
 search	design_pseudocode/design.cpp	/^Status Solver::search(int max_conflicts, int max_learnts, SearchParam param) {$/;"	f	class:Solver
-search	qsat/qsat.cpp	/^bool Solver::search() {$/;"	f	class:qsat::Solver
+search	qsat/qsat.cpp	/^Status Solver::search() {$/;"	f	class:qsat::Solver
 segment	3rd-party/PEGTL/tao/pegtl/contrib/uri.hpp	/^   struct segment : star< pchar > {};$/;"	s	namespace:tao::pegtl::uri
 segment_nz	3rd-party/PEGTL/tao/pegtl/contrib/uri.hpp	/^   struct segment_nz : plus< pchar > {};$/;"	s	namespace:tao::pegtl::uri
 segment_nz_nc	3rd-party/PEGTL/tao/pegtl/contrib/uri.hpp	/^   struct segment_nz_nc : plus< sor< unreserved, pct_encoded, sub_delims, one< '@' > > > {}; \/\/ non-zero-length segment without any colon ":"$/;"	s	namespace:tao::pegtl::uri
@@ -3251,7 +3255,7 @@ soft_dotted	3rd-party/PEGTL/tao/pegtl/contrib/icu/utf32.hpp	/^      struct soft_
 soft_dotted	3rd-party/PEGTL/tao/pegtl/contrib/icu/utf32.hpp	/^      struct soft_dotted : binary_property< UCHAR_SOFT_DOTTED > {};$/;"	s	namespace:tao::pegtl::utf32_be::utf32_le::icu
 soft_dotted	3rd-party/PEGTL/tao/pegtl/contrib/icu/utf8.hpp	/^   struct soft_dotted : binary_property< UCHAR_SOFT_DOTTED > {};$/;"	s	namespace:tao::pegtl::utf8::icu
 solve	design_pseudocode/design.cpp	/^bool solve() {$/;"	f
-solve	qsat/qsat.cpp	/^bool Solver::solve() {$/;"	f	class:qsat::Solver
+solve	qsat/qsat.cpp	/^Status Solver::solve() {$/;"	f	class:qsat::Solver
 sor	3rd-party/PEGTL/tao/pegtl/internal/sor.hpp	/^   struct sor$/;"	s	namespace:tao::pegtl::internal
 sor	3rd-party/PEGTL/tao/pegtl/internal/sor.hpp	/^   struct sor<>$/;"	s	namespace:tao::pegtl::internal
 sor	3rd-party/PEGTL/tao/pegtl/rules.hpp	/^   template< typename... Rules > struct sor : internal::sor< Rules... > {};$/;"	s	namespace:tao::pegtl
