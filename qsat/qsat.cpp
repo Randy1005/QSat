@@ -619,7 +619,6 @@ Status Solver::solve() {
 		}
 	}
 	
-
 	// revert all the way back to level 0
 	_cancel_until(0);
 	return status;
@@ -632,8 +631,6 @@ const std::vector<Clause>& Solver::clauses() const {
 bool Solver::transpile_task_to_z3(const std::string& task_file_name) { 	 
 	std::ifstream ifs;
   ifs.open(task_file_name);
-
-
   if (!ifs) {
     throw std::runtime_error("failed to open task file."); 
   }

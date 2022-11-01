@@ -580,15 +580,6 @@ inline void Solver::_new_decision_level() {
 	_trail_lim.push_back(_trail.size());
 }
 
-
-
-
-
-
-
-
-
-
 }  // end of namespace --------------------------------------------------------
 
 
