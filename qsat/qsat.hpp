@@ -470,7 +470,6 @@ private:
 	// distributions
 	std::uniform_int_distribution<int> _uint_dist;
 
-	
 	/**
 	 * some temp data structures to prevent
 	 * allocation overhead

@@ -162,6 +162,12 @@ void Solver::add_clause(const std::vector<Literal>& lits) {
 int Solver::propagate() {
 	int confl_cref = CREF_UNDEF;
 	int num_props = 0;
+	
+	Clause& c = _clauses[131];
+	for (int i = 0; i < c.literals.size(); i++) {
+		std::cout << c.literals[i].id << ", ";
+	}
+	std::cout << "\n";
 
 	while (_qhead < _trail.size()) {
 		
@@ -170,9 +176,11 @@ int Solver::propagate() {
 		Literal p = _trail[_qhead++];
 		num_props++;
 
+		std::cout << "propagating " << p.id << "\n";
 		// obtain the watchers of this literal
 		// std::vector<Watcher> ws = std::move(watches[p.id]);
 		std::vector<Watcher>& ws = watches[p.id];
+
 		size_t i, j;
 		bool next_watcher;
 		for (i = j = 0; i < ws.size(); )	{
@@ -195,6 +203,19 @@ int Solver::propagate() {
 				c.literals[0] = c.literals[1];
 				c.literals[1] = false_lit;
 			}
+	
+
+			/*
+			for (auto& l : c.literals) {
+				std::cout << l.id << ", ";
+			}
+			std::cout << "\n";
+			*/
+			std::cout << "watcher cref = " << cr << "\n";
+			for (auto& l : c.literals) {
+				std::cout << l.id << ", ";
+			}
+			std::cout << "\n";
 
 			assert(c.literals[1] == false_lit);
 			i++;
@@ -243,7 +264,7 @@ int Solver::propagate() {
 				_qhead = _trail.size();
 				// and copy the remaining watches
 				// they still need to be examined in the next propagation
-				while (i < ws.size()) {
+				while (i < c.literals.size()) {
 					ws[j++] = ws[i++];
 				}
 			}
@@ -255,7 +276,7 @@ int Solver::propagate() {
 			}
 		}
 		// shrink the watcher list for this literal
-		// keep the first ws.size - (i-j) watchers
+		// keep the first c.size - (i-j) watchers
 		if (i - j != 0) {
 			ws.resize(ws.size() - i + j);
 		}	
@@ -269,6 +290,9 @@ int Solver::propagate() {
 Status Solver::search() {
 	std::vector<Literal> learnt_clause;
 	int backtrack_level = 0;
+
+
+	dump(std::cout);
 
 	for (;;) {
 		int confl_cref = propagate();
@@ -464,7 +488,7 @@ void Solver::print_assigns() {
 
 
 void Solver::dump(std::ostream& os) const {
-	int p = 0;
+	int p = 65;
 	std::vector<Watcher> ws = watches[p];
 	for (auto& w : ws) {
 		std::cout << "watcher:\n";
