@@ -243,7 +243,7 @@ public:
     return _trail_lim.size();
   }
 
-  void print_assigns();
+  void dump_assigns(std::ostream& os) const;
   
 	// TODO: this shouldn't be a public interface
   // but I need this to unit test literal op functionalities
@@ -459,6 +459,10 @@ private:
 	// which literal we're propagating in the trail
 	// NOTE: no more explicit propagation queue defined
 	int _qhead;
+
+	// solver search status
+	// a status variable to record result of solving: SAT/UNSAT/UNDEF
+	Status _solver_search_status = Status::UNDEFINED;
 
 	// random device to seed the random number generator
 	std::random_device _rd;	

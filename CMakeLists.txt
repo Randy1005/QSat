@@ -6,9 +6,7 @@ project(QSat VERSION 1.0)
 set(CMAKE_CXX_STANDARD 17)
 
 
-
 # test that filesystem header actually is there and works
-
 
 
 #------------------------------------------------------------------------------
@@ -36,15 +34,26 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
 endif()
 
 
-message("PROJECT_NAME:" ${PROJECT_NAME})
-message("PROJECT_SOURCE_DIR:" ${PROJECT_SOURCE_DIR})
-message("CMAKE_BUILD_TYPE:" ${CMAKE_BUILD_TYPE})
+
 
 # Turn on the verbose
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
+
 # Library-specific variable
 set(QSAT_3RD_PARTY_DIR ${PROJECT_SOURCE_DIR}/3rd-party)
+
+# Benchmark directory variable
+set(QSAT_BENCHMARK_DIR ${PROJECT_SOURCE_DIR}/benchmarks)
+
+
+message("PROJECT_NAME: " ${PROJECT_NAME})
+message("QSAT_SOURCE_DIR: " ${PROJECT_SOURCE_DIR})
+message("CMAKE_BUILD_TYPE: " ${CMAKE_BUILD_TYPE})
+
+message(STATUS "QSAT_BENCHMARK_DIR: " ${QSAT_BENCHMARK_DIR})
+
+
 
 # -----------------------------------------------------------------------------
 # must-have package include
@@ -52,6 +61,7 @@ set(QSAT_3RD_PARTY_DIR ${PROJECT_SOURCE_DIR}/3rd-party)
 
 # Enable test
 include(CTest)
+set(CMAKE_CTEST_ARGUMENTS "--output-on-failure")
 
 # -----------------------------------------------------------------------------
 # include sub cmake list
@@ -60,6 +70,10 @@ include(CTest)
 # add sub directories
 add_subdirectory(qsat)
 add_subdirectory(${QSAT_3RD_PARTY_DIR}/PEGTL)
+add_subdirectory(${QSAT_3RD_PARTY_DIR}/minisat)
 add_subdirectory(main)
 add_subdirectory(unittests)
+add_subdirectory(inttests)
+
+
 

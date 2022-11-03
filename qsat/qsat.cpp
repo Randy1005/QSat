@@ -321,7 +321,6 @@ Status Solver::search() {
 			decisions++;
 			Literal next_lit = _pick_branch_lit();
 			if (next_lit == LIT_UNDEF) {
-				print_assigns();
 				return Status::TRUE;
 			}
 
@@ -455,27 +454,37 @@ void Solver::_detach_clause(const int c_id) {
 }
 
 
-void Solver::print_assigns() {
+void Solver::dump_assigns(std::ostream& os) const {
   for (size_t i = 0; i < _assigns.size(); i++) {
-		std::cout << static_cast<int>(_assigns[i]) << " ";
-  }
-  std::cout << "\n";
+		if (_assigns[i] == Status::TRUE || _assigns[i] == Status::UNDEFINED) {
+			os << i + 1;
+		}
+		else {
+			os << "-" << (i + 1);
+		}
+		os << " ";
+	}
+	// add a 0 denoting the end of solution
+  os << "0\n";
 }
 
 
 void Solver::dump(std::ostream& os) const {
-	int p = 0;
-	std::vector<Watcher> ws = watches[p];
-	for (auto& w : ws) {
-		std::cout << "watcher:\n";
-		Clause c = _clauses[w.cref];
-		std::cout << "Clause " << w.cref << "\n";
-		for (auto& l : c.literals) {
-			std::cout << l.id << ", ";
-		}
-		std::cout << "\n";
-	}
+	switch(_solver_search_status) {
+		case Status::TRUE:
+			os << "SAT\n";
+			dump_assigns(os);
+			break;
+		case Status::FALSE:
+			os << "UNSAT\n";
+			break;
+		case Status::UNDEFINED:
+			os << "UNDET\n";
+			break;
 
+		default:
+			break;
+	}
 }
 
 void Solver::_init() {
@@ -559,7 +568,6 @@ void Solver::_cancel_until(int level) {
 		// revert trail_lim
 		_trail_lim.resize(level);
 	}
-
 }
 
 
@@ -599,16 +607,14 @@ void Solver::reset() {
 
 Status Solver::solve() {
 	_model.clear();
-	// define search status
-	Status status = Status::UNDEFINED;
 	
 	// TODO: restart configurations can be implemented
 	// TODO: budget can be defined too, conflict budget and propagtion budget
-	while (status == Status::UNDEFINED) {
-		status = search();	
+	while (_solver_search_status == Status::UNDEFINED) {
+		_solver_search_status = search();	
 	}
 
-	if (status == Status::TRUE) {
+	if (_solver_search_status == Status::TRUE) {
 		// extend and copy model
 		_model.resize(num_variables(), Status::UNDEFINED);
 		for (int i = 0; i < num_variables(); i++) {
@@ -617,8 +623,9 @@ Status Solver::solve() {
 	}
 	
 	// revert all the way back to level 0
-	_cancel_until(0);
-	return status;
+	// (if we're doing incremental solving)
+	// _cancel_until(0);
+	return _solver_search_status;
 }
 
 const std::vector<Clause>& Solver::clauses() const {

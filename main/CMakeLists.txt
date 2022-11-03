@@ -8,3 +8,6 @@ target_compile_options(qsat INTERFACE -Wall -Wextra -Wfatal-errors)
 target_link_libraries(QSat LINK_PUBLIC qsat LINK_PUBLIC stdc++fs)
 target_include_directories(QSat PRIVATE ${PROJECT_SOURCE_DIR})
 
+# create a variable for this executable
+set(QSAT_EXEC ${PROJECT_SOURCE_DIR}/build/main/QSat)
+
