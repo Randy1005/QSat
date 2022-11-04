@@ -17,13 +17,15 @@ int main(int argc, char* argv[]) {
 	qsat::Status res = s.solve();
 	
   end_time = std::chrono::steady_clock::now(); 
-  
+ 
+
+	std::cout << "================ QSat Statisitics ================\n";
 	std::cout << "conflicts:\t" << s.conflicts << "\n";
 	std::cout << "propagations:\t" << s.propagations << "\n";
 	std::chrono::duration<double, std::milli> elapsed_time = end_time - start_time;  
   std::cout << "Run time: " 
-            << elapsed_time.count()
-            << " ms\n";
+            << elapsed_time.count() / 1000.0 
+            << " s\n";
  
 	if (res == qsat::Status::TRUE) {
 		std::cout << "+++ SAT +++\n";
@@ -39,6 +41,9 @@ int main(int argc, char* argv[]) {
 		std::ofstream os(argv[2]);
 		s.dump(os);
 	}
+
+	std::cout << "==================================================\n";
+
 
   return 0;
 }

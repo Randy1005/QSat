@@ -91,6 +91,7 @@ TEST_CASE("Order Heap" * doctest::timeout(300)) {
   REQUIRE(heap[3] == 6);
   REQUIRE(heap[4] == 4);
   REQUIRE(heap[5] == 5);
+
 }
 
 

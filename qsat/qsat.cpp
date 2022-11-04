@@ -256,9 +256,7 @@ int Solver::propagate() {
 		}
 		// shrink the watcher list for this literal
 		// keep the first ws.size - (i-j) watchers
-		if (i - j != 0) {
-			ws.resize(ws.size() - i + j);
-		}	
+		ws.resize(ws.size() - i + j);
 	}
 	
 	propagations += num_props;
@@ -286,7 +284,8 @@ Status Solver::search() {
 			
 			// undo everything until the backtrack level
 			_cancel_until(backtrack_level);
-				
+		
+			
 			if (learnt_clause.size() == 1) {
 				// immediately enqueue the only literal
 				unchecked_enqueue(learnt_clause[0], CREF_UNDEF);
@@ -340,10 +339,11 @@ void Solver::analyze(int confl_cref,
 		int& out_btlevel) {
 
 	int path_cnt = 0;
-	Literal p = LIT_UNDEF;
 	
+	Literal p = LIT_UNDEF;
 	// leave room for the asserting literal
-	out_learnt.push_back(LIT_UNDEF);
+	out_learnt.push_back(p);
+
 
 	// traverse from the tail of the trail
 	int index = _trail.size() - 1;
@@ -352,12 +352,14 @@ void Solver::analyze(int confl_cref,
 		assert(confl_cref != CREF_UNDEF);
 		Clause& confl_c = _clauses[confl_cref];
 
+
 		// if this conflict clause is already learnt
 		// i.e. a previously learnt clause causing conflict
 		// this clause should be considered more 'active'
 		if (confl_c.learnt) {
 			cla_bump_activity(confl_c);
 		}
+
 
 		// if p == lit_undef, that means we're looking at the 
 		// conflict point (the one 'propagation()' produced)
@@ -368,7 +370,6 @@ void Solver::analyze(int confl_cref,
 		// (meaning we exclude this lit when we produce a learnt clause)
 		for (size_t j = (p == LIT_UNDEF) ? 0 : 1; j < confl_c.literals.size(); j++) {
 			Literal q = confl_c.literals[j];
-			
 			// if we haven't checked this variable yet
 			// and its decision level > 0
 			// that means this variable is a contribution to
@@ -393,7 +394,7 @@ void Solver::analyze(int confl_cref,
 				}
 			}
 		}
-		
+	
 		// select the next literal to look at
 		// skip the ones that are already examined
 		while (!_seen[var(_trail[index--])]);
@@ -404,6 +405,7 @@ void Solver::analyze(int confl_cref,
 		path_cnt--;
 
 	} while (path_cnt > 0);
+
 
 	// add the asserting literal
 	out_learnt[0] = ~p;
@@ -536,7 +538,7 @@ Literal Solver::_pick_branch_lit() {
 		
 		Literal p(next + 1);
 		int rnd = static_cast<int>(_uni_int_dist(_mtrng)) % 2;
-		return rnd ? ~p : p;	
+		return rnd ? p : p;	
 	}
 
 }

@@ -24,3 +24,6 @@ intel_task_files/*
 
 # ctags
 tags
+
+# regression outputs
+*.output

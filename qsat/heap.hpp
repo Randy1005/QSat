@@ -58,7 +58,7 @@ class Heap {
    * @param i the node index as the starting point to heapify upwards
    */
   void percolate_up(int i) {
-    // var at heap index i
+		// var at heap index i
     int var = heap[i];
     
     // index of i's parent
@@ -149,7 +149,7 @@ public:
    */
   void decrease(int v) {
     assert(in_heap(v));
-    percolate_up(indices[v]);
+		percolate_up(indices[v]);
   }
 
   /**
@@ -170,15 +170,18 @@ public:
    * newly inserted node
    */
   void insert(int v) {
-    indices.resize(lt.activities.size(), -1);
-		
+		// FIXME:
+		// CAUTION: this line might be causing potential issues
+		// do more unit testing on heap to fix this
+		indices.resize(lt.activities.size() + 1, -1);	
+
     // pre-condition:
     // this variable must NOT exist in heap
     assert(!in_heap(v));
-    heap.push_back(v);
-    
+		indices[v] = heap.size();
+
     // place this variable at the bottom of heap
-    indices[v] = heap.size() - 1;
+    heap.push_back(v);
     
     // and heapify upwards
     percolate_up(indices[v]);
