@@ -27,3 +27,6 @@ tags
 
 # regression outputs
 *.output
+*.out
+inttest_outputs/
+inttest_outputs/*
