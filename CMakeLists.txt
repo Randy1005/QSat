@@ -50,7 +50,6 @@ set(QSAT_BENCHMARK_DIR ${PROJECT_SOURCE_DIR}/benchmarks)
 message("PROJECT_NAME: " ${PROJECT_NAME})
 message("QSAT_SOURCE_DIR: " ${PROJECT_SOURCE_DIR})
 message("CMAKE_BUILD_TYPE: " ${CMAKE_BUILD_TYPE})
-
 message(STATUS "QSAT_BENCHMARK_DIR: " ${QSAT_BENCHMARK_DIR})
 
 
@@ -74,6 +73,19 @@ add_subdirectory(${QSAT_3RD_PARTY_DIR}/minisat)
 add_subdirectory(main)
 add_subdirectory(unittests)
 add_subdirectory(inttests)
+add_subdirectory(${QSAT_BENCHMARK_DIR}/uf50-218)
+add_subdirectory(${QSAT_BENCHMARK_DIR}/uuf50-218)
+add_subdirectory(${QSAT_BENCHMARK_DIR}/uf75-325)
+add_subdirectory(${QSAT_BENCHMARK_DIR}/uuf75-325)
+add_subdirectory(${QSAT_BENCHMARK_DIR}/uf100-430)
+add_subdirectory(${QSAT_BENCHMARK_DIR}/uuf100-430)
+add_subdirectory(${QSAT_BENCHMARK_DIR}/uf125-538)
+add_subdirectory(${QSAT_BENCHMARK_DIR}/uuf125-538)
+add_subdirectory(${QSAT_BENCHMARK_DIR}/CBS_k3_n100_m449_b10)
+add_subdirectory(${QSAT_BENCHMARK_DIR}/CBS_k3_n100_m449_b30)
+add_subdirectory(${QSAT_BENCHMARK_DIR}/CBS_k3_n100_m449_b50)
+add_subdirectory(${QSAT_BENCHMARK_DIR}/CBS_k3_n100_m449_b70)
+add_subdirectory(${QSAT_BENCHMARK_DIR}/CBS_k3_n100_m449_b90)
 
 
 

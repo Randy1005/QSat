@@ -1,6 +1,11 @@
 # Integration test on benchmarks
 message(STATUS "Building integration tests ...")
+
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+# execute_process(COMMAND ${Python3_EXECUTABLE} my_script.py my_arg)
+
 set(QSAT_CHECKER ${PROJECT_SOURCE_DIR}/inttests/shell.py)
+set(QSAT_BAD_INPUT_REMOVER ${QSAT_3RD_PARTY_DIR}/remove_bad_lines_from_cnf.py)
 
 
 add_test(it.sat_v20_c91 ${QSAT_CHECKER} "sat_v20_c91.cnf")
@@ -8,6 +13,9 @@ add_test(it.sat_v20_c91_2 ${QSAT_CHECKER} "sat_v20_c91_2.cnf")
 add_test(it.unsat_v50_c218 ${QSAT_CHECKER} "unsat_v50_c218.cnf")
 add_test(it.unsat_aim_v100_c160 ${QSAT_CHECKER} "aim_v100_c160_unsat.cnf")
 add_test(it.unsat_hole_v42_c133 ${QSAT_CHECKER} "pigeon_hole_unsat_v42_c133.cnf")
+
+
+# harder problems
 add_test(it.s3-3-3-10 ${QSAT_CHECKER} "s3-3-3-10.cnf")
 add_test(it.s3-3-3-1 ${QSAT_CHECKER} "s3-3-3-1.cnf")
 add_test(it.s3-3-3-3 ${QSAT_CHECKER} "s3-3-3-3.cnf")
@@ -29,9 +37,43 @@ add_test(it.chnl11_12 ${QSAT_CHECKER} "chnl11_12.cnf")
 add_test(it.chnl11_13 ${QSAT_CHECKER} "chnl11_13.cnf")
 add_test(it.chnl11_20 ${QSAT_CHECKER} "chnl11_20.cnf")
 
+# each of these takes up to 15 mins to solve for minisat
 add_test(it.hole7 ${QSAT_CHECKER} "hole7.cnf")
 add_test(it.hole8 ${QSAT_CHECKER} "hole8.cnf")
 add_test(it.hole9 ${QSAT_CHECKER} "hole9.cnf")
-#add_test(it.hole10 ${QSAT_CHECKER} "hole10.cnf")
-#add_test(it.hole11 ${QSAT_CHECKER} "hole11.cnf")
-#add_test(it.hole12 ${QSAT_CHECKER} "hole12.cnf")
+add_test(it.hole10 ${QSAT_CHECKER} "hole10.cnf")
+add_test(it.hole11 ${QSAT_CHECKER} "hole11.cnf")
+add_test(it.hole12 ${QSAT_CHECKER} "hole12.cnf")
+
+set_tests_properties(
+	it.sat_v20_c91 
+	it.sat_v20_c91_2
+	it.unsat_v50_c218
+	it.unsat_aim_v100_c160
+	it.unsat_hole_v42_c133
+	it.s3-3-3-10
+	it.s3-3-3-1
+	it.s3-3-3-3
+	it.s3-3-3-4
+	it.s3-3-3-8
+	it.fpga10_8_sat
+	it.fpga10_9_sat
+	it.fpga12_8_sat
+	it.fpga12_9_sat
+	it.fpga12_11_sat
+	it.fpga12_12_sat
+	it.chnl10_11
+	it.chnl10_12
+	it.chnl10_13
+	it.chnl11_12
+	it.chnl11_13
+	it.chnl11_20
+	it.hole7
+	it.hole8
+	it.hole9
+	it.hole10
+	it.hole11
+	it.hole12
+	PROPERTIES LABELS "integration")
+
+

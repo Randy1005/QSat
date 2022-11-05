@@ -23,7 +23,7 @@ intel_task_files/*
 *.swp
 
 # ctags
-tags
+*tags
 
 # regression outputs
 *.output

@@ -60,7 +60,7 @@ void Solver::read_dimacs(std::istream& is) {
 
   while (true) {
     is >> buf;
-
+	
     if (is.eof()) {
       break;
     }

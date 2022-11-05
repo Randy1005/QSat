@@ -1,1 +1,6 @@
 s3-3-3* are the global routing instances
+
+
+# about the bad line remover script
+We probably only need to run this one time to reformat the input cnfs
+but now we're rerunning it every time we "cmake ../""
