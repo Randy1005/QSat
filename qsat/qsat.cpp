@@ -538,7 +538,7 @@ Literal Solver::_pick_branch_lit() {
 		
 		Literal p(next + 1);
 		int rnd = static_cast<int>(_uni_int_dist(_mtrng)) % 2;
-		return rnd ? p : p;	
+		return rnd ? ~p : p;	
 	}
 
 }
