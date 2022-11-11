@@ -317,7 +317,7 @@ Status Solver::search() {
 			// TODO: exceed conflict budget, should restart
 
 			// exceeded max_learnt, should reduce clause database
-			if (_learnts.size() - num_assigns() >= max_learnts) {
+			if (static_cast<double>(_learnts.size()) - num_assigns() >= max_learnts) {
 				reduce_db();	
 			}
 
@@ -462,16 +462,6 @@ void Solver::_attach_clause(const int cref) {
 	const std::vector<Literal>& lits = _clauses[cref].literals;
 	assert(lits.size() > 1);
 
-	/*
-	if (_clauses[cref].learnt) {
-		std::cout << "attaching c" << cref << "\n";		
-		for (int i = 0; i < lits.size(); i++) {
-			std::cout << lits[i].id << ", ";		
-		}
-		std::cout << "\n";
-	}
-	*/
-
 	watches[(~lits[0]).id].push_back(Watcher(cref, lits[1]));
 	watches[(~lits[1]).id].push_back(Watcher(cref, lits[0]));
 
@@ -519,12 +509,42 @@ void Solver::_detach_clause(const int cref) {
 	}
 }
 
+struct reduce_db_lt {
+	std::vector<Clause>& clauses;
+	reduce_db_lt(std::vector<Clause>& cs) :
+		clauses(cs)
+	{
+	}
+
+	bool operator () (int x, int y) {
+		return clauses[x].literals.size() > 2 &&
+			(clauses[y].literals.size() == 2 || 
+			 clauses[x].activity < clauses[y].activity);
+	}
+};
+
+
+
 void Solver::reduce_db() {
 	int i, j;
 	
 	// remove any clause below this activity
 	double extra_limit = cla_inc / _learnts.size();
-		
+	
+	std::sort(_learnts.begin(), _learnts.end(), reduce_db_lt(_clauses));
+
+	for (i = j = 0; i < _learnts.size(); i++) {
+		Clause& c = _clauses[_learnts[i]];
+		if (c.literals.size() > 2 && !locked(_learnts[i]) &&
+				(i < _learnts.size() / 2 || c.activity < extra_limit)) {
+			remove_clause(_learnts[i]);
+		}
+		else {
+			_learnts[j++] = _learnts[i];
+		}
+	}
+
+	_learnts.resize(_learnts.size() - i + j);
 }
 
 

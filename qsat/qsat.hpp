@@ -170,9 +170,13 @@ struct Watcher {
 	Watcher(Watcher&&) = default;
 
 	bool operator != (const Watcher& rhs) {
-		return cref != rhs.cref || blocker.id != rhs.blocker.id;
+		return cref != rhs.cref;
 	}
 
+	bool operator == (const Watcher& rhs) {
+		return cref == rhs.cref;
+	}
+		
 	// clause reference id
 	int cref;
 	Literal blocker;

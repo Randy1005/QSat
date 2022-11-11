@@ -62,7 +62,6 @@ TEST_CASE("Clause Detachment Correctness" * doctest::timeout(300)) {
 	REQUIRE(s.watches[3][0].cref == 2);
 	REQUIRE(s.watches[3][0].blocker.id == 7);
 
-	
 	// detach c0
 	// watches[~a] (watches[1]) would become empty
 	// watches[~d] (watches[6]) would have a size of 1
@@ -80,6 +79,7 @@ TEST_CASE("Clause Detachment Correctness" * doctest::timeout(300)) {
 	s.add_clause({b, ~a, e});
 	s.add_clause({b, ~c, d});
 	REQUIRE(s.watches[12].size() == 3);
+	
 
 	// detach c3
 	// watches[~b] would become:
@@ -101,7 +101,6 @@ TEST_CASE("Clause Detachment Correctness" * doctest::timeout(300)) {
 	REQUIRE(s.watches[12][0].cref == 4);
 	REQUIRE(s.watches[12][0].blocker.id == 17);
 	REQUIRE(s.watches[17].size() == 0);
-
 
 
 }
