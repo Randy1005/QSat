@@ -7,11 +7,14 @@ list(APPEND QSAT_UNITTESTS
   verify_heap
   verify_enqueue
 	verify_watches
+	verify_detach_clauses
 	# verify_priority_queue
 )
 
 foreach(unittest IN LISTS QSAT_UNITTESTS)
   add_executable(${unittest} ${unittest}.cpp)
+	add_test(NAME ${unittest} COMMAND ${unittest})	
+	set_property(TEST ${unittest} PROPERTY LABELS "unit")
   target_include_directories(${unittest} PRIVATE ${PROJECT_SOURCE_DIR} ${QSAT_3RD_PARTY_DIR}/doctest)
   target_link_libraries(${unittest} LINK_PUBLIC qsat LINK_PUBLIC stdc++fs)
   doctest_discover_tests(${unittest})

@@ -294,7 +294,7 @@ Status Solver::search() {
 				// store the learnt clause
 				int learnt_cref = _clauses.size();
 				_learnts.push_back(learnt_cref);
-				_clauses.push_back(Clause(learnt_clause));
+				_clauses.push_back(Clause(learnt_clause, true));
 					
 				// initialize watches for this clause
 				_attach_clause(learnt_cref);
@@ -444,15 +444,62 @@ void Solver::analyze(int confl_cref,
 	}
 }
 
+void Solver::remove_clause(const int cref) {
+	Clause& c = _clauses[cref];
+	_detach_clause(cref);
+	
+	if (locked(cref)) {
+		_var_info[var(c.literals[0])].reason_cla = CREF_UNDEF;
+	}
+
+}
+
 
 void Solver::_attach_clause(const int cref) {
 	const std::vector<Literal>& lits = _clauses[cref].literals;
 	watches[(~lits[0]).id].push_back(Watcher(cref, lits[1]));
 	watches[(~lits[1]).id].push_back(Watcher(cref, lits[0]));
+
+	if (_clauses[cref].learnt) {
+		num_learnts++;		
+	}
+
 }
 
-// TODO: will be needed when we reduce learnt clauses
-void Solver::_detach_clause(const int c_id) {
+void Solver::_detach_clause(const int cref) {
+	const std::vector<Literal>& lits = _clauses[cref].literals;
+	assert(lits.size() > 1);
+
+	// NOTE:
+	// minisat has strict/lazy clause detachment
+	// we only implement strict detachment for now
+	std::vector<Watcher>& ws0 = watches[(~lits[0]).id];
+	std::vector<Watcher>& ws1 = watches[(~lits[1]).id];
+	
+	int i = 0, j = 0;	
+	Watcher to_detach0(cref, lits[1]);
+	Watcher to_detach1(cref, lits[0]);
+	while (ws0[i] != to_detach0) {
+		i++;
+	}
+
+	while (ws1[j] != to_detach1) {
+		j++;
+	}
+
+	// swap the watcher to remove with
+	// the last element, and pop it
+	// TODO: more efficient way to remove?
+	ws0[i] = std::move(ws0[ws0.size() - 1]);
+	ws0.pop_back();
+
+	ws1[i] = std::move(ws1[ws1.size() - 1]);
+	ws1.pop_back();
+	
+	if (_clauses[cref].learnt) {
+		num_learnts--;	
+	}
+
 }
 
 

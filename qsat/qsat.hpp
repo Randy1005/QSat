@@ -102,7 +102,7 @@ struct Clause {
   /**
   @brief constructs a clause with given literals using copy semantics
   */
-  Clause(const std::vector<Literal>& lits, bool is_learnt  = false);
+  Clause(const std::vector<Literal>& lits, bool is_learnt = false);
 
   Clause(std::vector<Literal>&& lits, bool is_learnt = false);
 
@@ -168,6 +168,10 @@ struct Watcher {
 	Watcher& operator=(const Watcher&) = default;
 	Watcher(const Watcher&) = default;
 	Watcher(Watcher&&) = default;
+
+	bool operator!=(const Watcher& rhs) {
+		return cref != rhs.cref || blocker.id != rhs.blocker.id;
+	}
 
 	// clause reference id
 	int cref;
@@ -279,14 +283,22 @@ public:
    */
   bool enqueue(const Literal& p, const int from_cla = CREF_UNDEF);
 
+	void remove_clause(const int cref);
+
 	void var_bump_activity(int v);
 	void var_bump_activity(int v, double inc);
 	void var_decay_activity();
 	void cla_bump_activity(Clause& c);
 	void cla_decay_activity();
-
 	int level(int v) const;
 	int reason(int v) const;
+	
+	/**
+	 * @brief locked
+	 * a clause is locked when it's a reason of a current assignment
+	 * do not remove it during database reduction
+	 */
+	bool locked(const int cref) const;
 
 	/**
 	 * @brief propagate
@@ -320,6 +332,12 @@ public:
 	 */
 	void analyze(int confl_cref, std::vector<Literal>& out_learnt, int& out_btlevel);
 
+	/**
+	 * @brief reduce_db
+	 * remove half of the learnt clauses, exclude the ones locked by 
+	 * current assignments. Also don't remove binary clauses.
+	 */
+	void reduce_db();
 
   void reset();
   void read_dimacs(std::istream&);
@@ -337,6 +355,7 @@ public:
 	uint64_t propagations = 0;
 	uint64_t conflicts = 0;
 	uint64_t decisions = 0;
+	uint64_t num_learnts = 0;
 
 	// user-configurable variables
 	double var_inc;
@@ -386,13 +405,13 @@ private:
 	 * initialize the watched literals for
 	 * newly added clauses
 	 */
-	void _attach_clause(const int c_id);
+	void _attach_clause(const int cref);
 	
 	/**
 	 * @brief detach clause
 	 * inverse action of attach, remove the watchers
 	 */
-	void _detach_clause(const int c_id);
+	void _detach_clause(const int cref);
 
 
 	/**
@@ -582,6 +601,14 @@ inline int Solver::reason(int v) const {
 
 inline void Solver::_new_decision_level() {
 	_trail_lim.push_back(_trail.size());
+}
+
+inline bool Solver::locked(const int cref) const {
+	const Clause& c = _clauses[cref];
+	
+	return value(c.literals[0]) == Status::TRUE &&
+		reason(var(c.literals[0])) != CREF_UNDEF &&
+		reason(var(c.literals[0])) == cref;
 }
 
 }  // end of namespace --------------------------------------------------------

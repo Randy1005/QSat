@@ -4,6 +4,10 @@ import subprocess
 import sys
 import math
 import time
+from datetime import datetime
+import pandas
+from openpyxl import Workbook
+from openpyxl import load_workbook
 
 
 # Usage: python shell.py [dimacs_cnf_file]
@@ -11,8 +15,13 @@ import time
 source_path = "/home/randy/QSat" 
 
 minisat_exe = source_path + "/build/3rd-party/minisat/minisat"
-qsat_exe = source_path + "/build/main/QSat"
+qsat_exe = source_path + "/build/bin/QSat"
 input_cnf = source_path + "/benchmarks/" + sys.argv[1]
+
+csv_path = source_path + "/inttests/regression.csv"
+first_row = False
+if not os.path.exists(csv_path):
+    first_row = True
 
 
 
@@ -28,6 +37,8 @@ subprocess.call([minisat_exe, input_cnf, minisat_output],
 end_time = time.time();
 
 minisat_exec_time = end_time - start_time;
+
+
 
 start_time = time.time()
 subprocess.call([qsat_exe, input_cnf, qsat_output],
@@ -49,7 +60,6 @@ qsat_res = [line.strip() for line in open(qsat_output)]
 minisat_res = [line.strip() for line in open(minisat_output)]
 
 
-
 # compare SAT/UNSAT results
 if qsat_res[0] != minisat_res[0]:
     #print("solver SAT/UNSAT mismatch!", file=sys.stderr)
@@ -64,9 +74,28 @@ if time_diff > 0 and time_diff / minisat_exec_time > 0.1:
     sys.exit(1)
 '''
 
+
+
+df = pandas.DataFrame()
+new_series = pandas.Series({'test_case': sys.argv[1], 
+    'qsat_runtime': format(qsat_exec_time, '.4f'), 
+    'minisat_runtime': format(minisat_exec_time, '.4f'), 
+    'slowdown': format(qsat_exec_time / minisat_exec_time, '.4f')}) 
+
+df = df.append(new_series, ignore_index=True)
+
+if first_row:
+    df.to_csv(csv_path, mode='a', index=False)
+else:
+    df.to_csv(csv_path, mode='a', index=False, header=False)
+
+
+
+
 if os.path.isfile(minisat_output):
     os.remove(minisat_output)
 
 if os.path.isfile(qsat_output):
     os.remove(qsat_output)
+
 
