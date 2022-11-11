@@ -103,6 +103,7 @@ TEST_CASE("Clause Detachment Correctness" * doctest::timeout(300)) {
 	REQUIRE(s.watches[17].size() == 0);
 
 
+
 }
 
 

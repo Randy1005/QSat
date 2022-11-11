@@ -169,7 +169,7 @@ struct Watcher {
 	Watcher(const Watcher&) = default;
 	Watcher(Watcher&&) = default;
 
-	bool operator!=(const Watcher& rhs) {
+	bool operator != (const Watcher& rhs) {
 		return cref != rhs.cref || blocker.id != rhs.blocker.id;
 	}
 
@@ -362,6 +362,10 @@ public:
 	double cla_inc;
 	double var_decay;
 	double cla_decay;
+
+	bool enable_reduce_db;
+	double learnt_size_factor;
+	double max_learnts;
 	
 	// configurable phase-saving [0: no, 1: limited, 2: full]
 	int phase_saving;
@@ -605,7 +609,7 @@ inline void Solver::_new_decision_level() {
 
 inline bool Solver::locked(const int cref) const {
 	const Clause& c = _clauses[cref];
-	
+
 	return value(c.literals[0]) == Status::TRUE &&
 		reason(var(c.literals[0])) != CREF_UNDEF &&
 		reason(var(c.literals[0])) == cref;

@@ -37,6 +37,8 @@ Solver::Solver() :
 	cla_decay(0.999),
 	phase_saving(0),
 
+	enable_reduce_db(true),
+	learnt_size_factor(0.333),
 	_mtrng(_rd())
 {
 
@@ -230,7 +232,6 @@ int Solver::propagate() {
 				continue;
 			}
 
-
 			// if we reached here:
 			// no new watch is found
 			// this clause is unit, we try to propagate
@@ -315,7 +316,10 @@ Status Solver::search() {
 			
 			// TODO: exceed conflict budget, should restart
 
-			// TODO: exceed max_learnt, should reduce clause database
+			// exceeded max_learnt, should reduce clause database
+			if (_learnts.size() - num_assigns() >= max_learnts) {
+				reduce_db();	
+			}
 
 			decisions++;
 			Literal next_lit = _pick_branch_lit();
@@ -434,7 +438,6 @@ void Solver::analyze(int confl_cref,
 		Literal r = out_learnt[max];
 		out_learnt[max] = out_learnt[1];
 		out_learnt[1] = r;
-		
 		out_btlevel = level(var(r));
 	}
 
@@ -447,7 +450,7 @@ void Solver::analyze(int confl_cref,
 void Solver::remove_clause(const int cref) {
 	Clause& c = _clauses[cref];
 	_detach_clause(cref);
-	
+
 	if (locked(cref)) {
 		_var_info[var(c.literals[0])].reason_cla = CREF_UNDEF;
 	}
@@ -457,6 +460,18 @@ void Solver::remove_clause(const int cref) {
 
 void Solver::_attach_clause(const int cref) {
 	const std::vector<Literal>& lits = _clauses[cref].literals;
+	assert(lits.size() > 1);
+
+	/*
+	if (_clauses[cref].learnt) {
+		std::cout << "attaching c" << cref << "\n";		
+		for (int i = 0; i < lits.size(); i++) {
+			std::cout << lits[i].id << ", ";		
+		}
+		std::cout << "\n";
+	}
+	*/
+
 	watches[(~lits[0]).id].push_back(Watcher(cref, lits[1]));
 	watches[(~lits[1]).id].push_back(Watcher(cref, lits[0]));
 
@@ -469,7 +484,7 @@ void Solver::_attach_clause(const int cref) {
 void Solver::_detach_clause(const int cref) {
 	const std::vector<Literal>& lits = _clauses[cref].literals;
 	assert(lits.size() > 1);
-
+	
 	// NOTE:
 	// minisat has strict/lazy clause detachment
 	// we only implement strict detachment for now
@@ -479,27 +494,37 @@ void Solver::_detach_clause(const int cref) {
 	int i = 0, j = 0;	
 	Watcher to_detach0(cref, lits[1]);
 	Watcher to_detach1(cref, lits[0]);
-	while (ws0[i] != to_detach0) {
-		i++;
-	}
 
-	while (ws1[j] != to_detach1) {
-		j++;
-	}
-
+	for (; i < ws0.size() && ws0[i] != to_detach0; i++); 
+	for (; j < ws1.size() && ws1[j] != to_detach1; j++); 
+	
+	// FIXME:
+	// sometimes watcher is not found
+	// causing assertion fail
+	// possibly bug in updating watchers
+	assert(i < ws0.size());
+	assert(j < ws1.size());
+	
 	// swap the watcher to remove with
 	// the last element, and pop it
 	// TODO: more efficient way to remove?
-	ws0[i] = std::move(ws0[ws0.size() - 1]);
+	ws0[i] = ws0[ws0.size() - 1];
 	ws0.pop_back();
 
-	ws1[i] = std::move(ws1[ws1.size() - 1]);
+	ws1[j] = ws1[ws1.size() - 1];
 	ws1.pop_back();
 	
 	if (_clauses[cref].learnt) {
 		num_learnts--;	
 	}
+}
 
+void Solver::reduce_db() {
+	int i, j;
+	
+	// remove any clause below this activity
+	double extra_limit = cla_inc / _learnts.size();
+		
 }
 
 
@@ -656,7 +681,10 @@ void Solver::reset() {
 
 Status Solver::solve() {
 	_model.clear();
-	
+
+	// initialize max learnt clause database size
+	max_learnts = num_clauses() * learnt_size_factor;
+
 	// TODO: restart configurations can be implemented
 	// TODO: budget can be defined too, conflict budget and propagtion budget
 	while (_solver_search_status == Status::UNDEFINED) {
