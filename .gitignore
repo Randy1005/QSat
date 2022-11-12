@@ -27,6 +27,7 @@ intel_task_files/*
 
 # regression outputs
 *.output
+*.mem
 *.out
 inttest_outputs/
 inttest_outputs/*

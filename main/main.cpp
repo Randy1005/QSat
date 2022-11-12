@@ -13,9 +13,7 @@ int main(int argc, char* argv[]) {
   
 	std::chrono::steady_clock::time_point start_time, end_time; 
   start_time = std::chrono::steady_clock::now(); 
-  
 	qsat::Status res = s.solve();
-	
   end_time = std::chrono::steady_clock::now(); 
  
 
