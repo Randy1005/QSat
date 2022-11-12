@@ -29,6 +29,4 @@ intel_task_files/*
 *.output
 *.mem
 *.out
-inttest_outputs/
-inttest_outputs/*
-regression*
+inttests/regression*
