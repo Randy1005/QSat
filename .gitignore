@@ -31,3 +31,4 @@ intel_task_files/*
 *.out
 inttest_outputs/
 inttest_outputs/*
+regression*
