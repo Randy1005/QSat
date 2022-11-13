@@ -37,7 +37,8 @@ Solver::Solver() :
 	cla_decay(0.999),
 	phase_saving(0),
 
-	enable_reduce_db(true),
+	enable_reduce_db(false),
+	enable_rnd_pol(false),
 	learnt_size_factor(0.333),
 	_mtrng(_rd())
 {
@@ -317,7 +318,8 @@ Status Solver::search() {
 			// TODO: exceed conflict budget, should restart
 
 			// exceeded max_learnt, should reduce clause database
-			if (static_cast<double>(_learnts.size()) - num_assigns() >= max_learnts) {
+			if (static_cast<double>(_learnts.size()) - num_assigns() >= max_learnts &&
+					enable_reduce_db) {
 				reduce_db();	
 			}
 
@@ -630,7 +632,13 @@ Literal Solver::_pick_branch_lit() {
 		
 		Literal p(next + 1);
 		int rnd = static_cast<int>(_uni_int_dist(_mtrng)) % 2;
-		return rnd ? ~p : p;	
+		
+		if (enable_rnd_pol) {
+			return rnd ? p : ~p;
+		}
+		else {
+			return p;
+		}
 	}
 
 }

@@ -6,8 +6,6 @@ import math
 import time
 from datetime import datetime
 import pandas
-from openpyxl import Workbook
-from openpyxl import load_workbook
 
 
 # Usage: python shell.py [dimacs_cnf_file]
@@ -116,8 +114,8 @@ df = pandas.DataFrame([[sys.argv[1],
         'minisat_runtime (sec)', 
         'qsat_mem (Mbyte)',
         'minisat_mem (Mbyte)',
-        'slowdown (qsat/minisat)',
-        'mem_usage (qsat/minisat)'])
+        'runtime_slowdown (qsat/minisat)',
+        'mem_usage_diff (qsat/minisat)'])
 
 # df = pandas.concat(new_row, ignore_index=True)
 

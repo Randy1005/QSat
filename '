@@ -129,20 +129,16 @@ public:
     // indices is basically a map<var, index>
     // to see if a var exists in indices
     // just check indices[var]
-    
-		
-		// CAUTION: 
-		// due to the Literal interface we have
-		// we're resizing our heap and clause size while
-		// we read in the files
-		// so when we run this in_heap check, 'indices' is
-		// not resized yet, and we end up accessing invalid
-		// indices
-		//
-		// TODO: add the mentioned scenario to unittest
-		if (empty() || (static_cast<int>(indices.size()) - 1) < v) {
+    if (empty()) {
       return false;
     }
+
+		std::cout << "in_heap\n";
+		std::cout << "act.size = " << lt.activities.size() << "\n";
+		std::cout << "v = " << v << "\n";
+		std::cout << "indices.size = " << indices.size() << "\n";
+		std::cout << "heap.size = " << heap.size() << "\n";
+		assert(v < indices.size());
 
     return indices[v] >= 0;
   }
@@ -181,9 +177,11 @@ public:
    * newly inserted node
    */
   void insert(int v) {
-		indices.resize(lt.activities.size(), -1);	
-	  assert(v < static_cast<int>(indices.size()));
-
+		// FIXME:
+		// CAUTION: this line might be causing potential issues
+		// do more unit testing on heap to fix this
+		indices.resize(lt.activities.size() + 1, -1);	
+	    
 		// pre-condition:
     // this variable must NOT exist in heap
     assert(!in_heap(v));

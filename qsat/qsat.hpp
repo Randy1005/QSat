@@ -368,6 +368,8 @@ public:
 	double cla_decay;
 
 	bool enable_reduce_db;
+	bool enable_rnd_pol;
+
 	double learnt_size_factor;
 	double max_learnts;
 	

@@ -13,6 +13,8 @@ set(CMAKE_CXX_STANDARD 17)
 # default release build
 #------------------------------------------------------------------------------
 
+
+
 # set compilation flags
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
