@@ -737,6 +737,8 @@ const std::vector<Clause>& Solver::clauses() const {
   return _clauses;
 }
 
+
+/*
 bool Solver::transpile_task_to_z3(const std::string& task_file_name) { 	 
 	std::ifstream ifs;
   ifs.open(task_file_name);
@@ -833,6 +835,8 @@ bool Solver::transpile_task_to_z3(const std::string& task_file_name) {
 bool Solver::transpile_task_to_dimacs(const std::string& task_file_name) {
   return true;
 }
+
+*/
 
 }  // end of namespace qsat ---------------------------------------------------
 

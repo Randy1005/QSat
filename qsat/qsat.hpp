@@ -8,7 +8,7 @@
 #include <filesystem>
 #include <random>
 #include "heap.hpp"
-#include "intel_task_grammar.hpp"
+// #include "intel_task_grammar.hpp"
 
 namespace qsat {
 
@@ -347,8 +347,11 @@ public:
   void read_dimacs(std::istream&);
 
 
-  bool transpile_task_to_z3(const std::string& task_file_name);
-  bool transpile_task_to_dimacs(const std::string& task_file_name);
+	/**
+	 * intel task file transpiling
+	 */
+  // bool transpile_task_to_z3(const std::string& task_file_name);
+  // bool transpile_task_to_dimacs(const std::string& task_file_name);
 
 
 	// watches
