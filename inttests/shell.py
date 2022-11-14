@@ -10,9 +10,9 @@ import pandas
 
 # Usage: python shell.py [dimacs_cnf_file]
 
-source_path = "/home/randy/QSat" 
+source_path = ".." 
 
-minisat_exe = source_path + "/build/3rd-party/minisat/minisat"
+minisat_exe = source_path + "/build/bin/minisat"
 qsat_exe = source_path + "/build/bin/QSat"
 input_cnf = source_path + "/benchmarks/" + sys.argv[1]
 
@@ -43,7 +43,7 @@ minisat_cmd = "/bin/time --format=\"%M\" " \
 start_time = time.time()
 subprocess.run(minisat_cmd, 
     shell=True,
-    stdout=subprocess.DEVNULL,
+    # stdout=subprocess.DEVNULL,
     stderr=subprocess.DEVNULL) 
 '''
 subprocess.call([minisat_exe, input_cnf, minisat_solver_output], 
@@ -63,7 +63,7 @@ qsat_cmd = "/bin/time --format=\"%M\" " \
 start_time = time.time()
 subprocess.run(qsat_cmd, 
     shell=True,
-    stdout=subprocess.DEVNULL,
+    # stdout=subprocess.DEVNULL,
     stderr=subprocess.DEVNULL) 
 '''
 subprocess.call([qsat_exe, input_cnf, qsat_solver_output],

@@ -49,11 +49,15 @@ set(QSAT_3RD_PARTY_DIR ${PROJECT_SOURCE_DIR}/3rd-party)
 set(QSAT_BENCHMARK_DIR ${PROJECT_SOURCE_DIR}/benchmarks)
 
 
+
+# Binary folder
+SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+
 message("PROJECT_NAME: " ${PROJECT_NAME})
 message("QSAT_SOURCE_DIR: " ${PROJECT_SOURCE_DIR})
 message("CMAKE_BUILD_TYPE: " ${CMAKE_BUILD_TYPE})
 message(STATUS "QSAT_BENCHMARK_DIR: " ${QSAT_BENCHMARK_DIR})
-
+message(STATUS "BIN_DIR: " ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 
 
 # -----------------------------------------------------------------------------
