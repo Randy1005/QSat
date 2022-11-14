@@ -1,3 +1,4 @@
+![example](https://github.com/Randy1005/QSat/actions/workflows/cmake.yml/badge.svg)
 # QSat
 
 ## Features
