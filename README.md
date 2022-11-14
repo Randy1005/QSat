@@ -1,4 +1,4 @@
-![example event parameter](https://github.com/github/docs/actions/workflows/main.yml/badge.svg?event=push)
+![example](https://github.com/Randy1005/QSat/actions/workflows/cmake.yml/badge.svg)
 # QSat
 
 ## Features
