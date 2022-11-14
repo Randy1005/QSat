@@ -38,7 +38,7 @@ Solver::Solver() :
 	phase_saving(0),
 
 	enable_reduce_db(false),
-	enable_rnd_pol(false),
+	enable_rnd_pol(true),
 	learnt_size_factor(0.333),
 	_mtrng(_rd())
 {
