@@ -26,7 +26,10 @@ intel_task_files/*
 *tags
 
 # regression outputs
+
 *.output
 *.mem
 *.out
 inttests/regression*
+inttests/*.csv
+inttests/*.xlsx
