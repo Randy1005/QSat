@@ -251,6 +251,16 @@ public:
     return _trail_lim.size();
   }
 
+	void reduce_test() {
+		remove_clause(2);
+		remove_clause(3);
+		_clauses[2] = _clauses[4];
+		_detach_clause(4);
+		_attach_clause(2);
+		_clauses.resize(_clauses.size() - 2);
+		
+	}
+
   void dump_assigns(std::ostream& os) const;
   
 	// TODO: this shouldn't be a public interface
@@ -505,6 +515,11 @@ private:
 	
 	// distributions
 	std::uniform_int_distribution<int> _uni_int_dist;
+
+	// num_orig_clauses
+	// number of clauses from the original problem
+	// not counting the learnt clauses
+	int _num_orig_clauses;
 
 	/**
 	 * some temp data structures to prevent

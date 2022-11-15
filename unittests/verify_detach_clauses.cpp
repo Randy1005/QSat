@@ -102,7 +102,42 @@ TEST_CASE("Clause Detachment Correctness" * doctest::timeout(300)) {
 	REQUIRE(s.watches[12][0].blocker.id == 17);
 	REQUIRE(s.watches[17].size() == 0);
 
-
 }
 
+TEST_CASE("Clause Detachment Correctness" * doctest::timeout(300)) {
+
+  qsat::Literal a(1), b(-7), c(9), d(-4), e(2);
+  qsat::Solver s;
+
+  qsat::Clause c0({a, d, c});
+  qsat::Clause c1({b, c});
+  qsat::Clause c2({d, e});
+
+  // NOTE:
+  // we don't usually call add_clause like this
+  // solely for the purpose of unit testing
+  s.add_clause(c0.literals);
+  s.add_clause(c1.literals);
+  s.add_clause(c2.literals);
+
+ 	// watches (upon completing add clauses)
+	
+	// a: lit 0, b: lit 13
+	// c: lit 16, d: lit 7
+	// e: lit 2
+	// ~a, ~d should be watched in c0
+	// ~b, ~c should be watched in c1
+	// ~d, ~e should be watched in c2
+	
+
+	// add two clauses
+	// s.t. ~b (12) has a total of 3 watchers
+	// [c1, 16], [c3, 0], [c4, 17]
+	s.add_clause({b, ~a, e});
+	s.add_clause({b, ~c, d});
+	REQUIRE(s.watches[12].size() == 3);
+	
+
+
+}
 

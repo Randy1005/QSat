@@ -37,7 +37,7 @@ Solver::Solver() :
 	cla_decay(0.999),
 	phase_saving(0),
 
-	enable_reduce_db(false),
+	enable_reduce_db(true),
 	enable_rnd_pol(true),
 	learnt_size_factor(0.333),
 	_mtrng(_rd())
@@ -71,7 +71,7 @@ void Solver::read_dimacs(std::istream& is) {
       std::getline(is, buf);
     }
     else if (buf == "p") {
-      is >> buf >> buf >> buf;
+      is >> buf >> _num_orig_clauses >> buf;
     }
     else {
       variable = std::stoi(buf);
@@ -199,6 +199,13 @@ int Solver::propagate() {
 				c.literals[1] = false_lit;
 			}
 
+			/*			
+			std::cout << "c" << cr << " learnt? " << c.learnt << "\n";
+			for (auto& l : c.literals) {
+				std::cout << l.id << ", ";
+			}
+			std::cout << "\nfalse_lit = " << false_lit.id << "\n";
+			*/
 			assert(c.literals[1] == false_lit);
 			i++;
 			
@@ -489,11 +496,7 @@ void Solver::_detach_clause(const int cref) {
 
 	for (; i < ws0.size() && ws0[i] != to_detach0; i++); 
 	for (; j < ws1.size() && ws1[j] != to_detach1; j++); 
-	
-	// FIXME:
-	// sometimes watcher is not found
-	// causing assertion fail
-	// possibly bug in updating watchers
+		
 	assert(i < ws0.size());
 	assert(j < ws1.size());
 	
@@ -532,9 +535,8 @@ void Solver::reduce_db() {
 	
 	// remove any clause below this activity
 	double extra_limit = cla_inc / _learnts.size();
-	
-	std::sort(_learnts.begin(), _learnts.end(), reduce_db_lt(_clauses));
 
+	std::sort(_learnts.begin(), _learnts.end(), reduce_db_lt(_clauses));
 	for (i = j = 0; i < _learnts.size(); i++) {
 		Clause& c = _clauses[_learnts[i]];
 		if (c.literals.size() > 2 && !locked(_learnts[i]) &&
@@ -542,11 +544,31 @@ void Solver::reduce_db() {
 			remove_clause(_learnts[i]);
 		}
 		else {
-			_learnts[j++] = _learnts[i];
+			_learnts[j] = _learnts[i];
+			j++;
 		}
 	}
 
-	_learnts.resize(_learnts.size() - i + j);
+
+	int shrink_size = i - j;
+	_learnts.resize(_learnts.size() - shrink_size);
+	
+	
+	// TODO: figure out a way to correctly shrink the _clauses too 
+	/*
+	for (int k = 0; k < _learnts.size(); k++) {
+		_clauses[_num_orig_clauses + k] = _clauses[_learnts[k]];
+		_attach_clause(_num_orig_clauses + k);	
+		_learnts[k] = _num_orig_clauses + k;
+	}
+	
+	_clauses.resize(_clauses.size() - shrink_size);
+	
+	
+	std::cout << "after reduce:\n";
+	std::cout << "_clauses.size = " << _clauses.size() << "\n";
+	std::cout << "_learnts.size = " << _learnts.size() << "\n";
+	*/
 }
 
 
@@ -711,7 +733,7 @@ Status Solver::solve() {
 	_model.clear();
 
 	// initialize max learnt clause database size
-	max_learnts = num_clauses() * learnt_size_factor;
+	max_learnts = _num_orig_clauses * learnt_size_factor;
 
 	// TODO: restart configurations can be implemented
 	// TODO: budget can be defined too, conflict budget and propagtion budget
