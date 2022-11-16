@@ -37,8 +37,8 @@ Solver::Solver() :
 	cla_decay(0.999),
 	phase_saving(0),
 
-	enable_reduce_db(true),
-	enable_rnd_pol(true),
+	enable_reduce_db(false),
+	enable_rnd_pol(false),
 	learnt_size_factor(0.333),
 	_mtrng(_rd())
 {
@@ -199,7 +199,7 @@ int Solver::propagate() {
 				c.literals[1] = false_lit;
 			}
 
-			/*			
+			/*
 			std::cout << "c" << cr << " learnt? " << c.learnt << "\n";
 			for (auto& l : c.literals) {
 				std::cout << l.id << ", ";
@@ -464,6 +464,9 @@ void Solver::remove_clause(const int cref) {
 		_var_info[var(c.literals[0])].reason_cla = CREF_UNDEF;
 	}
 
+	// free up memory in this clause 
+	c.literals.erase(c.literals.begin(), c.literals.end());
+	c.literals.clear();
 }
 
 
@@ -532,7 +535,7 @@ struct reduce_db_lt {
 
 void Solver::reduce_db() {
 	int i, j;
-	
+
 	// remove any clause below this activity
 	double extra_limit = cla_inc / _learnts.size();
 
@@ -544,8 +547,7 @@ void Solver::reduce_db() {
 			remove_clause(_learnts[i]);
 		}
 		else {
-			_learnts[j] = _learnts[i];
-			j++;
+			_learnts[j++] = _learnts[i];	
 		}
 	}
 
@@ -553,18 +555,16 @@ void Solver::reduce_db() {
 	int shrink_size = i - j;
 	_learnts.resize(_learnts.size() - shrink_size);
 	
-	
-	// TODO: figure out a way to correctly shrink the _clauses too 
+	// TODO: figure out a way to correctly shrink the _clauses 
+	// coerce them together, now _clauses is fragmented
+	// TODO: maybe try clearing all the learnt in _clauses and attach them again
+	// using the new, sorted, reduced _learnts
 	/*
 	for (int k = 0; k < _learnts.size(); k++) {
-		_clauses[_num_orig_clauses + k] = _clauses[_learnts[k]];
-		_attach_clause(_num_orig_clauses + k);	
-		_learnts[k] = _num_orig_clauses + k;
+		int cr = _clauses[_learnts[k]];
+
 	}
-	
-	_clauses.resize(_clauses.size() - shrink_size);
-	
-	
+
 	std::cout << "after reduce:\n";
 	std::cout << "_clauses.size = " << _clauses.size() << "\n";
 	std::cout << "_learnts.size = " << _learnts.size() << "\n";
