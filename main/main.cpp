@@ -43,5 +43,70 @@ int main(int argc, char* argv[]) {
 
 	std::cout << "==================================================\n";
 
+	/*
+	qsat::Literal a(1), b(-7), c(9), d(-4), e(2);
+  qsat::Solver s;
+
+  qsat::Clause c0({a, d, c});
+  qsat::Clause c1({b, c});
+  qsat::Clause c2({d, e});
+
+  // NOTE:
+  // we don't usually call add_clause like this
+  // solely for the purpose of unit testing
+  s.add_clause(c0.literals);
+  s.add_clause(c1.literals);
+  s.add_clause(c2.literals);
+	// add two clauses
+	// s.t. ~b (12) has a total of 3 watchers
+	// [c1, 16], [c3, 0], [c4, 17]
+	s.add_clause({b, ~a, e});
+	s.add_clause({b, ~c, d});
+
+ 	// watches (upon completing add clauses)
+	
+	
+	// a: lit 0, b: lit 13
+	// c: lit 16, d: lit 7
+	// e: lit 2
+	// ~a, ~d should be watched in c0
+	// ~b, ~c should be watched in c1
+	// ~d, ~e should be watched in c2
+	
+	// watches[~a]'s 0th watcher clause is c0
+	// watches[~a]'s 0th blocker is d (7)
+	// watches[~d]'s 0th watcher clause is c0
+	// watches[~d]'s 0th blocker is a (0)
+	// watches[~d]'s 1th watcher clause is c2
+	// watches[~d]'s 0th blocker is e (2)
+	// watches[~b]'s 0th blocker is c (16)
+	// watches[~c]'s 0th watcher clause is c1
+	// watches[~c]'s 0th blocker is b (13)
+	// watches[~e]'s 0th watcher clause is c2
+	// watches[~e]'s 0th blocker is d (7)
+
+	// detach c0
+	// watches[~a] (watches[1]) would become empty
+	// watches[~d] (watches[6]) would have a size of 1
+	//		- the one watcher left is [c2, 2]
+	s.remove_clause(0);
+
+
+
+	// detach c3
+	// watches[~b] would become:
+	// [c1, 16], [c4, 17]
+	s.remove_clause(3);
+
+
+	// detach c1
+	// watches[~b] (12) becomes:
+	// [c4, 17]
+	// watches[~c] (17) becomes empty
+	s.remove_clause(1);
+	
+	s.clean_all_watches();
+	*/
+
   return 0;
 }

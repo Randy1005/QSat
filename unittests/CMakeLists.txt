@@ -8,7 +8,6 @@ list(APPEND QSAT_UNITTESTS
   verify_enqueue
 	verify_watches
 	verify_detach_clauses
-	# verify_priority_queue
 )
 
 foreach(unittest IN LISTS QSAT_UNITTESTS)

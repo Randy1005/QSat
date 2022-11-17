@@ -198,8 +198,8 @@ int Solver::propagate() {
 				c.literals[0] = c.literals[1];
 				c.literals[1] = false_lit;
 			}
-
-			/*
+			
+			/*	
 			std::cout << "c" << cr << " learnt? " << c.learnt << "\n";
 			for (auto& l : c.literals) {
 				std::cout << l.id << ", ";
@@ -463,9 +463,9 @@ void Solver::remove_clause(const int cref) {
 
 	if (locked(cref)) {
 		_var_info[var(c.literals[0])].reason_cla = CREF_UNDEF;
-	}
+	}	
 
-	// mark this clause as to be removed	
+	// mark this clause as to be removed
 	c.mark = 1;	
 }
 
@@ -478,7 +478,7 @@ void Solver::_attach_clause(const int cref) {
 	watches[(~lits[1]).id].push_back(Watcher(cref, lits[0]));
 
 	if (_clauses[cref].learnt) {
-		num_learnts++;		
+		num_learnts++;
 	}
 
 }
@@ -487,31 +487,15 @@ void Solver::_detach_clause(const int cref) {
 	const std::vector<Literal>& lits = _clauses[cref].literals;
 	assert(lits.size() > 1);
 	
-	// NOTE:
+	// TODO:
 	// minisat has strict/lazy clause detachment
-	// we only implement strict detachment for now
-	std::vector<Watcher>& ws0 = watches[(~lits[0]).id];
-	std::vector<Watcher>& ws1 = watches[(~lits[1]).id];
+	// we only implement lazy detachment for now
+	_smudge_watch((~lits[0]).id);	
+	_smudge_watch((~lits[1]).id);	
 	
-	int i = 0, j = 0;	
-	Watcher to_detach0(cref, lits[1]);
-	Watcher to_detach1(cref, lits[0]);
+	assert(_watches_dirty[(~lits[0]).id]);
+	assert(_watches_dirty[(~lits[1]).id]);
 
-	for (; i < ws0.size() && ws0[i] != to_detach0; i++); 
-	for (; j < ws1.size() && ws1[j] != to_detach1; j++); 
-		
-	assert(i < ws0.size());
-	assert(j < ws1.size());
-	
-	// swap the watcher to remove with
-	// the last element, and pop it
-	// TODO: more efficient way to remove?
-	ws0[i] = ws0[ws0.size() - 1];
-	ws0.pop_back();
-
-	ws1[j] = ws1[ws1.size() - 1];
-	ws1.pop_back();
-	
 	if (_clauses[cref].learnt) {
 		num_learnts--;	
 	}
@@ -534,15 +518,8 @@ struct reduce_db_lt {
 
 
 void Solver::reduce_db() {
-	for (int i = _learnts.size() / 2; i < _learnts.size(); i++) {
-		remove_clause(_learnts[i]);
-	}
-	
-	int shrink = _learnts.size() / 2;
-	_learnts.resize(shrink);
-	
-	
-	/*
+	std::cout << "reducing\n";
+
 	int i, j;
 
 	// remove any clause below this activity
@@ -556,14 +533,16 @@ void Solver::reduce_db() {
 			remove_clause(_learnts[i]);
 		}
 		else {
-			_learnts[j++] = _learnts[i];	
+			_learnts[j] = _learnts[i];
+			// set relocate crefs
+			_clauses[_learnts[i]].reloc = num_orig_clauses + j;
 		}
 	}
 
 
 	_learnts.resize(_learnts.size() - i + j);
-	*/
 
+	relocate_all();
 
 	// TODO: figure out a way to correctly shrink the _clauses 
 	// coerce them together, now _clauses is fragmented
@@ -760,9 +739,97 @@ void Solver::_new_var(int v) {
 	// resize watches
 	watches.resize(2 * num_variables());
 
+	// resize watches dirty bits
+	_watches_dirty.resize(2 * num_variables(), false);
+
 	// resize the seen list
 	_seen.resize(num_variables(), false);
 }
+
+void Solver::_smudge_watch(int p) {
+	if (_watches_dirty[p] == false) {
+		_watches_dirty[p] = true;
+		_watches_dirties.push_back(p);
+	}
+
+}
+
+void Solver::_clean_watch(int p) {
+	std::vector<Watcher>& ws = watches[p];
+	int i, j;
+	for (i = j = 0; i < ws.size(); i++) {
+		if (!watcher_deleted(ws[i])) {
+			// keep this watcher by copying it to the front
+			ws[j++] = ws[i];
+		}
+	}
+
+	ws.resize(ws.size() - i + j);
+	// and clear the dirty bit for this watches index
+	_watches_dirty[p] = false;
+
+}
+
+void Solver::clean_all_watches() {
+	for (int i = 0; i < _watches_dirties.size(); i++) {
+		// dirties might contain duplicates
+		// so check first if these watchers are already cleaned
+		if (_watches_dirty[_watches_dirties[i]]) {
+			_clean_watch(_watches_dirties[i]);
+			assert(!_watches_dirty[_watches_dirties[i]]);
+		}
+	}
+
+	_watches_dirties.clear();
+}
+
+void Solver::relocate_all() {
+	
+	std::cout << "relocating\n";
+	clean_all_watches();
+
+	// update relocated crefs in watches
+	for (int p = 0; p < watches.size(); p++) {
+		std::vector<Watcher>& ws = watches[p];
+		for (int i = 0; i < ws.size(); i++) {
+			Clause& c = _clauses[ws[i].cref];
+			if (c.reloc != -1) {
+				ws[i].cref = c.reloc;
+			}
+		}
+	}
+
+	// update relocated crefs for reasons
+	for (int p = 0; p < _trail.size(); p++) {
+		int v = var(_trail[p]);
+		// it's not safe to call 'locked' on relocated clauses
+		// we'd rather leave these clauses dangling
+		if (reason(v) != CREF_UNDEF && 
+				(_clauses[reason(v)].reloc != -1 || locked(reason(v)))) {
+			assert(!is_removed(reason(v)));
+			if (_clauses[reason(v)].reloc != -1) {
+				_var_info[v].reason_cla = _clauses[reason(v)].reloc;
+			}
+		}
+	}
+
+
+	// update the actual clause database
+	int i, j;
+	for (i = 0; i < _learnts.size(); i++) {
+		if (!is_removed(_learnts[i])) {
+			Clause& from = _clauses[_learnts[i]];
+			_clauses[from.reloc].literals.clear();
+			_clauses[from.reloc].literals.resize(from.literals.size());
+			_clauses[from.reloc] = Clause(from.literals);
+			_learnts[i] = from.reloc;
+		}
+	}
+	
+	_clauses.resize(num_orig_clauses + _learnts.size());
+
+}
+
 
 void Solver::reset() {
   _assigns.clear();

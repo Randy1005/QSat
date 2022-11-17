@@ -125,7 +125,16 @@ struct Clause {
 	// (for reducing clause database)
 	double activity = 0;
 
-	unsigned int mark = 2;
+	// marking this clause as deleted (mark = 1)
+	// or not (mark = 0)
+	unsigned int mark = 0;
+
+	// relocation index
+	// when we reduce database
+	// some clauses will be moved around
+	// we record where they will be moved to
+	// -1 means not relocated
+	int reloc = -1;
 };
 
 // constant:
@@ -253,15 +262,7 @@ public:
     return _trail_lim.size();
   }
 
-	void reduce_test() {
-		remove_clause(2);
-		remove_clause(3);
-		_clauses[2] = _clauses[4];
-		_detach_clause(4);
-		_attach_clause(2);
-		_clauses.resize(_clauses.size() - 2);
-		
-	}
+
 
   void dump_assigns(std::ostream& os) const;
   
@@ -308,7 +309,21 @@ public:
 	void cla_decay_activity();
 	int level(int v) const;
 	int reason(int v) const;
+	
+	/**
+	 * @ is removed
+	 * returns true if a clause is marked to be 
+	 * deleted
+	 */
 	bool is_removed(int cref) const;
+	
+	/**
+	 * @ watcher deleted
+	 * returns true if the cref in this watcher has been
+	 * marked to delete
+	 */
+	bool watcher_deleted(Watcher& w) const;
+
 
 	/**
 	 * @brief locked
@@ -359,6 +374,20 @@ public:
   void reset();
   void read_dimacs(std::istream&);
 
+	/**
+	 * @ clean all watches
+	 * a wrapper utility that invokes _clean_watch
+	 * on all watches
+	 */
+	void clean_all_watches();
+
+	/**
+	 * @ relocate all
+	 * relocate all crefs that's referenced in
+	 * watches, _var_info, etc.
+	 */
+	void relocate_all();
+
 
 	/**
 	 * intel task file transpiling
@@ -370,6 +399,7 @@ public:
 	// watches
 	// watches[lit] maps to a list of watchers watching 'lit'
 	std::vector<std::vector<Watcher>> watches;
+
 
 	// statistic variables
 	uint64_t propagations = 0;
@@ -464,6 +494,22 @@ private:
 	 */
 	void _cancel_until(int level);
 
+	/**
+	 * @ smudge watch
+	 * set the dirty bit of the specified watches[p]
+	 * notifying the solver that some of the watchers in
+	 * watches[p] has a cref that's marked as removed
+	 */
+	void _smudge_watch(int p);
+
+	/**
+	 * @ clean watch
+	 * from specified watches[p], iterate through the watchers,
+	 * if a watcher has a cref that's marked as removed, remove that
+	 * watcher
+	 */
+	void _clean_watch(int p);
+
   std::vector<Clause> _clauses; 
 
 	// learnt clauses
@@ -506,6 +552,14 @@ private:
 	// NOTE: no more explicit propagation queue defined
 	int _qhead;
 
+	// watches dirty bits
+	std::vector<bool> _watches_dirty;
+
+	// watches dirties
+	// stores the dirty indices
+	std::vector<int> _watches_dirties;
+
+
 	// solver search status
 	// a status variable to record result of solving: SAT/UNSAT/UNDEF
 	Status _solver_search_status = Status::UNDEFINED;
@@ -520,6 +574,8 @@ private:
 	// distributions
 	std::uniform_int_distribution<int> _uni_int_dist;
 	std::uniform_real_distribution<double> _uni_real_dist;
+
+
 
 	/**
 	 * some temp data structures to prevent
@@ -617,7 +673,6 @@ inline void Solver::cla_decay_activity() {
 	cla_inc *= (1 / cla_decay);
 }
 
-// variable information
 inline int Solver::level(int v) const {
 	return _var_info[v].decision_level;
 }
@@ -640,6 +695,10 @@ inline bool Solver::locked(const int cref) const {
 
 inline bool Solver::is_removed(int cref) const {
 	return _clauses[cref].mark == 1;
+}
+
+inline bool Solver::watcher_deleted(Watcher& w) const {
+	return _clauses[w.cref].mark == 1;
 }
 
 }  // end of namespace --------------------------------------------------------
