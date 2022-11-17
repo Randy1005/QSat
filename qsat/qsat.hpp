@@ -125,6 +125,7 @@ struct Clause {
 	// (for reducing clause database)
 	double activity = 0;
 
+	unsigned int mark = 2;
 };
 
 // constant:
@@ -237,8 +238,9 @@ public:
   */
   void add_clause(const std::vector<Literal>& lits);
 
-  size_t num_clauses() const { 
-    return _clauses.size(); 
+  size_t num_clauses() const {
+		// NOTE: _clauses.size is actually orig_clauses + learnt_clauses
+    return _clauses.size();
   }
   size_t num_variables() const {
     return _assigns.size(); 
@@ -306,7 +308,8 @@ public:
 	void cla_decay_activity();
 	int level(int v) const;
 	int reason(int v) const;
-	
+	bool is_removed(int cref) const;
+
 	/**
 	 * @brief locked
 	 * a clause is locked when it's a reason of a current assignment
@@ -373,7 +376,8 @@ public:
 	uint64_t conflicts = 0;
 	uint64_t decisions = 0;
 	uint64_t num_learnts = 0;
-
+	int num_orig_clauses;
+	
 	// user-configurable variables
 	double var_inc;
 	double cla_inc;
@@ -512,14 +516,10 @@ private:
 	// mersenne twister random number generator
 	// WARNING: this rng costs a lot of memory according to some developers
 	std::mt19937 _mtrng;
-	
+
 	// distributions
 	std::uniform_int_distribution<int> _uni_int_dist;
-
-	// num_orig_clauses
-	// number of clauses from the original problem
-	// not counting the learnt clauses
-	int _num_orig_clauses;
+	std::uniform_real_distribution<double> _uni_real_dist;
 
 	/**
 	 * some temp data structures to prevent
@@ -617,7 +617,6 @@ inline void Solver::cla_decay_activity() {
 	cla_inc *= (1 / cla_decay);
 }
 
-
 // variable information
 inline int Solver::level(int v) const {
 	return _var_info[v].decision_level;
@@ -637,6 +636,10 @@ inline bool Solver::locked(const int cref) const {
 	return value(c.literals[0]) == Status::TRUE &&
 		reason(var(c.literals[0])) != CREF_UNDEF &&
 		reason(var(c.literals[0])) == cref;
+}
+
+inline bool Solver::is_removed(int cref) const {
+	return _clauses[cref].mark == 1;
 }
 
 }  // end of namespace --------------------------------------------------------

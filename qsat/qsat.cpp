@@ -38,11 +38,11 @@ Solver::Solver() :
 	phase_saving(0),
 
 	enable_reduce_db(false),
-	enable_rnd_pol(false),
+	enable_rnd_pol(true),
 	learnt_size_factor(0.333),
 	_mtrng(_rd())
 {
-
+	_uni_real_dist = std::uniform_real_distribution(0.0, 1.0);
 }
 
 void Solver::read_dimacs(const std::string& input_file) {
@@ -71,7 +71,7 @@ void Solver::read_dimacs(std::istream& is) {
       std::getline(is, buf);
     }
     else if (buf == "p") {
-      is >> buf >> _num_orig_clauses >> buf;
+      is >> buf >> buf >> num_orig_clauses;
     }
     else {
       variable = std::stoi(buf);
@@ -318,6 +318,7 @@ Status Solver::search() {
 
 			var_decay_activity();
 			cla_decay_activity();
+		
 		}
 		else {
 			// no conflict, we can continue making decisions
@@ -464,9 +465,8 @@ void Solver::remove_clause(const int cref) {
 		_var_info[var(c.literals[0])].reason_cla = CREF_UNDEF;
 	}
 
-	// free up memory in this clause 
-	c.literals.erase(c.literals.begin(), c.literals.end());
-	c.literals.clear();
+	// mark this clause as to be removed	
+	c.mark = 1;	
 }
 
 
@@ -524,7 +524,7 @@ struct reduce_db_lt {
 	{
 	}
 
-	bool operator () (int x, int y) {
+	bool operator () (const int x, const int y) const {
 		return clauses[x].literals.size() > 2 &&
 			(clauses[y].literals.size() == 2 || 
 			 clauses[x].activity < clauses[y].activity);
@@ -534,6 +534,15 @@ struct reduce_db_lt {
 
 
 void Solver::reduce_db() {
+	for (int i = _learnts.size() / 2; i < _learnts.size(); i++) {
+		remove_clause(_learnts[i]);
+	}
+	
+	int shrink = _learnts.size() / 2;
+	_learnts.resize(shrink);
+	
+	
+	/*
 	int i, j;
 
 	// remove any clause below this activity
@@ -552,23 +561,51 @@ void Solver::reduce_db() {
 	}
 
 
-	int shrink_size = i - j;
-	_learnts.resize(_learnts.size() - shrink_size);
-	
+	_learnts.resize(_learnts.size() - i + j);
+	*/
+
+
 	// TODO: figure out a way to correctly shrink the _clauses 
 	// coerce them together, now _clauses is fragmented
-	// TODO: maybe try clearing all the learnt in _clauses and attach them again
-	// using the new, sorted, reduced _learnts
 	/*
 	for (int k = 0; k < _learnts.size(); k++) {
-		int cr = _clauses[_learnts[k]];
+		Clause& c = _clauses[_learnts[k]];
 
+		for (int l = 0; l < _trail.size(); l++) {
+			int v = var(_trail[l]);
+			if (_var_info[v].reason_cla == _learnts[k]) {
+				_var_info[v].reason_cla = num_orig_clauses + k;
+			}
+		}
+
+		if (locked(_learnts[k])) {
+			_var_info[var(c.literals[0])].reason_cla = num_orig_clauses + k;
+		}
+
+		// copy the learnts we wanna keep to the beginning
+		// of learnt
+		_clauses[num_orig_clauses + k].literals = c.literals;
+
+		// modify the learnt clause indices
+		_learnts[k] = num_orig_clauses + k;
 	}
 
-	std::cout << "after reduce:\n";
-	std::cout << "_clauses.size = " << _clauses.size() << "\n";
-	std::cout << "_learnts.size = " << _learnts.size() << "\n";
+	// shrink _clauses to size = orig_clauses + learnt
+	_clauses.resize(num_orig_clauses + _learnts.size());
+
+	// clear all watches
+	for (int p = 0; p < 2 * num_variables(); p++) {
+		watches[p].clear();
+		assert(watches[p].size() == 0);
+	}
+
+	// reattach watchers
+	for (int cr = 0; cr < _clauses.size(); cr++) {
+		assert(_clauses[cr].literals.size() > 1);
+		_attach_clause(cr);
+	}
 	*/
+
 }
 
 
@@ -653,13 +690,16 @@ Literal Solver::_pick_branch_lit() {
 		// come up with a better polarity mode in the future
 		
 		Literal p(next + 1);
-		int rnd = static_cast<int>(_uni_int_dist(_mtrng)) % 2;
-		
+		double prob = _uni_real_dist(_mtrng);
+	
+		// if random polarity mode is enabled
+		// there's a 5% of chance of picking the
+		// positive polarity
 		if (enable_rnd_pol) {
-			return rnd ? p : ~p;
+			return prob > 0.95 ? p : ~p;
 		}
 		else {
-			return p;
+			return ~p;
 		}
 	}
 
@@ -733,7 +773,7 @@ Status Solver::solve() {
 	_model.clear();
 
 	// initialize max learnt clause database size
-	max_learnts = _num_orig_clauses * learnt_size_factor;
+	max_learnts = num_orig_clauses * learnt_size_factor;
 
 	// TODO: restart configurations can be implemented
 	// TODO: budget can be defined too, conflict budget and propagtion budget
