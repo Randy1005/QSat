@@ -38,8 +38,8 @@ Solver::Solver() :
 	phase_saving(0),
 
 	enable_reduce_db(true),
-	enable_rnd_pol(false),
-	learnt_size_factor(0.333),
+	enable_rnd_pol(true),
+	learnt_size_factor(0.35),
 	_mtrng(_rd())
 {
 	_uni_real_dist = std::uniform_real_distribution(0.0, 1.0);
@@ -687,7 +687,7 @@ Literal Solver::_pick_branch_lit() {
 		// there's a 5% of chance of picking the
 		// positive polarity
 		if (enable_rnd_pol) {
-			return prob > 0.95 ? p : ~p;
+			return prob > 0.9 ? p : ~p;
 		}
 		else {
 			return ~p;
