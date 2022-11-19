@@ -37,8 +37,8 @@ Solver::Solver() :
 	cla_decay(0.999),
 	phase_saving(0),
 
-	enable_reduce_db(false),
-	enable_rnd_pol(true),
+	enable_reduce_db(true),
+	enable_rnd_pol(false),
 	learnt_size_factor(0.333),
 	_mtrng(_rd())
 {
@@ -192,15 +192,21 @@ int Solver::propagate() {
 
 			// make sure the false literal is data[1]
 			int cr = ws[i].cref;
+			assert(cr < _clauses.size());
+			
 			Clause& c = _clauses[cr];
 			Literal false_lit = ~p;
+			
 			if (c.literals[0] == false_lit) {
 				c.literals[0] = c.literals[1];
 				c.literals[1] = false_lit;
 			}
-			
-			/*	
+
+			/*
 			std::cout << "c" << cr << " learnt? " << c.learnt << "\n";
+			std::cout << "reloced? " << c.reloc << "\n";
+			std::cout << "mark = " << c.mark << "\n";
+			std::cout << "c.lits.size = " << c.literals.size() << "\n";
 			for (auto& l : c.literals) {
 				std::cout << l.id << ", ";
 			}
@@ -208,7 +214,7 @@ int Solver::propagate() {
 			*/
 			assert(c.literals[1] == false_lit);
 			i++;
-			
+		
 			// if 0th watch is true, then this
 			// clause is already satisfied
 			Literal first = c.literals[0];
@@ -235,7 +241,6 @@ int Solver::propagate() {
 				}
 			}
 			
-
 			if (next_watcher) {
 				continue;
 			}
@@ -518,8 +523,6 @@ struct reduce_db_lt {
 
 
 void Solver::reduce_db() {
-	std::cout << "reducing\n";
-
 	int i, j;
 
 	// remove any clause below this activity
@@ -533,15 +536,24 @@ void Solver::reduce_db() {
 			remove_clause(_learnts[i]);
 		}
 		else {
-			_learnts[j] = _learnts[i];
-			// set relocate crefs
-			_clauses[_learnts[i]].reloc = num_orig_clauses + j;
+			_learnts[j++] = _learnts[i];
 		}
 	}
 
 
-	_learnts.resize(_learnts.size() - i + j);
 
+	_learnts.resize(_learnts.size() - i + j);
+	
+	for (int i = 0; i < _learnts.size(); i++) {
+		assert(!is_removed(_learnts[i]));
+		// set relocation crefs
+		_clauses[_learnts[i]].reloc = num_orig_clauses + i; 
+		
+		// update learnt clauses indices to be in order again
+		_learnts[i] = num_orig_clauses + i;
+	}
+
+	
 	relocate_all();
 
 	// TODO: figure out a way to correctly shrink the _clauses 
@@ -784,8 +796,6 @@ void Solver::clean_all_watches() {
 }
 
 void Solver::relocate_all() {
-	
-	std::cout << "relocating\n";
 	clean_all_watches();
 
 	// update relocated crefs in watches
@@ -814,20 +824,29 @@ void Solver::relocate_all() {
 	}
 
 
-	// update the actual clause database
-	int i, j;
-	for (i = 0; i < _learnts.size(); i++) {
-		if (!is_removed(_learnts[i])) {
-			Clause& from = _clauses[_learnts[i]];
-			_clauses[from.reloc].literals.clear();
-			_clauses[from.reloc].literals.resize(from.literals.size());
-			_clauses[from.reloc] = Clause(from.literals);
-			_learnts[i] = from.reloc;
+	std::vector<Clause> new_clauses(_clauses.size());
+
+	for (int i = 0; i < _clauses.size(); i++) {
+		const Clause& c = _clauses[i];
+		if (!is_removed(i)) {
+			if (c.reloc != -1) {
+				new_clauses[c.reloc] = _clauses[i];
+				new_clauses[c.reloc].reloc = -1;
+			}
+			else {
+				// not relocated clause, assign it to the same index
+				new_clauses[i] = _clauses[i];
+			}
 		}
+		
 	}
-	
+
+
+	new_clauses.resize(num_orig_clauses + _learnts.size());
 	_clauses.resize(num_orig_clauses + _learnts.size());
 
+	// update the actual clause database		
+	_clauses = std::move(new_clauses);
 }
 
 
