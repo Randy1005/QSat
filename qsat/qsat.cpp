@@ -36,23 +36,23 @@ Solver::Solver() :
 	var_decay(0.95),
 	cla_decay(0.999),
 	phase_saving(0),
+	restart_first(100),
+	restart_inc(1.5),
 
 	enable_reduce_db(true),
 	enable_rnd_pol(true),
-	learnt_size_factor(0.35),
-	_mtrng(_rd())
+	learnt_size_factor(0.33),
+	_mtrng(_rd()),
+	_uni_real_dist(std::uniform_real_distribution(0.0, 1.0))
 {
-	_uni_real_dist = std::uniform_real_distribution(0.0, 1.0);
 }
 
 void Solver::read_dimacs(const std::string& input_file) {
   std::ifstream ifs;
   ifs.open(input_file);
-
   if (!ifs) {
     throw std::runtime_error("failed to open a file");
   }
-
   read_dimacs(ifs);
 }
 
@@ -202,16 +202,6 @@ int Solver::propagate() {
 				c.literals[1] = false_lit;
 			}
 
-			/*
-			std::cout << "c" << cr << " learnt? " << c.learnt << "\n";
-			std::cout << "reloced? " << c.reloc << "\n";
-			std::cout << "mark = " << c.mark << "\n";
-			std::cout << "c.lits.size = " << c.literals.size() << "\n";
-			for (auto& l : c.literals) {
-				std::cout << l.id << ", ";
-			}
-			std::cout << "\nfalse_lit = " << false_lit.id << "\n";
-			*/
 			assert(c.literals[1] == false_lit);
 			i++;
 		
@@ -278,15 +268,21 @@ int Solver::propagate() {
 }
 
 
-Status Solver::search() {
+Status Solver::search(int nof_conflicts) {
 	std::vector<Literal> learnt_clause;
 	int backtrack_level = 0;
+	int conflict_c = 0;
+	starts++;
 
 	for (;;) {
 		int confl_cref = propagate();
 		if (confl_cref != CREF_UNDEF) {
 			// conflict encountered!
 			conflicts++;
+
+			// conflict counter for one search
+			// to trigger restart;
+			conflict_c++;
 
 			if (decision_level() == 0) {
 				// top level conflict : UNSAT
@@ -328,7 +324,11 @@ Status Solver::search() {
 		else {
 			// no conflict, we can continue making decisions
 			
-			// TODO: exceed conflict budget, should restart
+			// exceed conflict budget, should restart
+			if (nof_conflicts >= 0 && conflict_c >= nof_conflicts) {
+				_cancel_until(0);
+				return Status::UNDEFINED;
+			}
 
 			// exceeded max_learnt, should reduce clause database
 			if (static_cast<double>(_learnts.size()) - num_assigns() >= max_learnts &&
@@ -687,7 +687,7 @@ Literal Solver::_pick_branch_lit() {
 		// there's a 5% of chance of picking the
 		// positive polarity
 		if (enable_rnd_pol) {
-			return prob > 0.9 ? p : ~p;
+			return prob > 0.95 ? p : ~p;
 		}
 		else {
 			return ~p;
@@ -782,6 +782,19 @@ void Solver::_clean_watch(int p) {
 
 }
 
+double Solver::_luby(double y, int x) {
+	int size, seq;
+	for (size = 1, seq = 0; size < x + 1; seq++, size = 2 * size + 1);
+
+	while (size - 1 != x) {
+		size = (size - 1) >> 1;
+		seq--;
+		x = x % size;
+	}
+	return std::pow(y, seq);
+
+}
+
 void Solver::clean_all_watches() {
 	for (int i = 0; i < _watches_dirties.size(); i++) {
 		// dirties might contain duplicates
@@ -863,8 +876,13 @@ Status Solver::solve() {
 
 	// TODO: restart configurations can be implemented
 	// TODO: budget can be defined too, conflict budget and propagtion budget
+	
+	int curr_restarts = 0;
 	while (_solver_search_status == Status::UNDEFINED) {
-		_solver_search_status = search();	
+		// calculate restart base with luby sequence
+		double restart_base = _luby(restart_inc, curr_restarts);
+		_solver_search_status = search(restart_base * restart_first);	
+		curr_restarts++;
 	}
 
 	if (_solver_search_status == Status::TRUE) {

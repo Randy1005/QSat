@@ -7,6 +7,7 @@
 #include <string>
 #include <filesystem>
 #include <random>
+#include <cmath>
 #include "heap.hpp"
 // #include "intel_task_grammar.hpp"
 
@@ -348,7 +349,7 @@ public:
 	 * main search loop that runs BCP
 	 * and resolves conflict
 	 */
-	Status search(/* TODO: search parameters go here */);
+	Status search(int nof_conflicts);
 
 	/**
 	 * @brief analyze
@@ -406,6 +407,7 @@ public:
 	uint64_t conflicts = 0;
 	uint64_t decisions = 0;
 	uint64_t num_learnts = 0;
+	uint64_t starts = 0;
 	int num_orig_clauses;
 	
 	// user-configurable variables
@@ -413,6 +415,9 @@ public:
 	double cla_inc;
 	double var_decay;
 	double cla_decay;
+
+	int restart_first; // the initial restart limit
+	double restart_inc; // the factor which restart limit is multiplied at each restart
 
 	bool enable_reduce_db;
 	bool enable_rnd_pol;
@@ -509,6 +514,19 @@ private:
 	 * watcher
 	 */
 	void _clean_watch(int p);
+
+	/**
+	 * @ luby
+	 * calculates the finite subsequence
+	 * of the luby sequence
+	 *
+	 * 0 : 1
+	 * 1 : 1 1 2
+	 * 2 : 1 1 2 1 1 2 4
+	 * 3 : 1 1 2 1 1 2 4 1 1 2 1 1 2 4 8
+	 */
+	double _luby(double y, int x);
+
 
   std::vector<Clause> _clauses; 
 
