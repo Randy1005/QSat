@@ -36,11 +36,12 @@ Solver::Solver() :
 	var_decay(0.95),
 	cla_decay(0.999),
 	phase_saving(0),
-	restart_first(100),
-	restart_inc(1.5),
+	restart_first(100), // set to -1 to disable
+	restart_inc(2),
 
 	enable_reduce_db(true),
 	enable_rnd_pol(true),
+	enable_luby(false),
 	learnt_size_factor(0.33),
 	_mtrng(_rd()),
 	_uni_real_dist(std::uniform_real_distribution(0.0, 1.0))
@@ -555,48 +556,6 @@ void Solver::reduce_db() {
 
 	
 	relocate_all();
-
-	// TODO: figure out a way to correctly shrink the _clauses 
-	// coerce them together, now _clauses is fragmented
-	/*
-	for (int k = 0; k < _learnts.size(); k++) {
-		Clause& c = _clauses[_learnts[k]];
-
-		for (int l = 0; l < _trail.size(); l++) {
-			int v = var(_trail[l]);
-			if (_var_info[v].reason_cla == _learnts[k]) {
-				_var_info[v].reason_cla = num_orig_clauses + k;
-			}
-		}
-
-		if (locked(_learnts[k])) {
-			_var_info[var(c.literals[0])].reason_cla = num_orig_clauses + k;
-		}
-
-		// copy the learnts we wanna keep to the beginning
-		// of learnt
-		_clauses[num_orig_clauses + k].literals = c.literals;
-
-		// modify the learnt clause indices
-		_learnts[k] = num_orig_clauses + k;
-	}
-
-	// shrink _clauses to size = orig_clauses + learnt
-	_clauses.resize(num_orig_clauses + _learnts.size());
-
-	// clear all watches
-	for (int p = 0; p < 2 * num_variables(); p++) {
-		watches[p].clear();
-		assert(watches[p].size() == 0);
-	}
-
-	// reattach watchers
-	for (int cr = 0; cr < _clauses.size(); cr++) {
-		assert(_clauses[cr].literals.size() > 1);
-		_attach_clause(cr);
-	}
-	*/
-
 }
 
 
@@ -874,13 +833,15 @@ Status Solver::solve() {
 	// initialize max learnt clause database size
 	max_learnts = num_orig_clauses * learnt_size_factor;
 
-	// TODO: restart configurations can be implemented
 	// TODO: budget can be defined too, conflict budget and propagtion budget
 	
 	int curr_restarts = 0;
 	while (_solver_search_status == Status::UNDEFINED) {
 		// calculate restart base with luby sequence
-		double restart_base = _luby(restart_inc, curr_restarts);
+		double restart_base = enable_luby ? 
+			_luby(restart_inc, curr_restarts) : 
+			std::pow(restart_inc, curr_restarts);
+		
 		_solver_search_status = search(restart_base * restart_first);	
 		curr_restarts++;
 	}

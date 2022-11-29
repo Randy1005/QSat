@@ -421,6 +421,7 @@ public:
 
 	bool enable_reduce_db;
 	bool enable_rnd_pol;
+	bool enable_luby;
 
 	double learnt_size_factor;
 	double max_learnts;

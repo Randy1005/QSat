@@ -19,6 +19,7 @@ int main(int argc, char* argv[]) {
 	std::cout << "================ QSat Statisitics ================\n";
 	std::cout << "num variables:\t" << s.num_variables() << "\n";
 	std::cout << "num clauses:\t" << s.num_orig_clauses << "\n";
+	std::cout << "restarts:\t" << s.starts << "\n";
 	std::cout << "conflicts:\t" << s.conflicts << "\n";
 	std::cout << "propagations:\t" << s.propagations << "\n";
 	std::chrono::duration<double, std::milli> elapsed_time = end_time - start_time;  
