@@ -840,12 +840,6 @@ Status Solver::solve() {
 		double restart_base = enable_luby ? 
 			_luby(restart_inc, curr_restarts) : 
 			std::pow(restart_inc, curr_restarts);
-	  
-    // reset restart counts if too large
-    // TODO: experimental
-    if (curr_restarts >= 40) {
-      curr_restarts = 0; 
-    }
 
 		_solver_search_status = search(restart_base * restart_first);	
 		curr_restarts++;
