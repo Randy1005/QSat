@@ -21,7 +21,7 @@ dirname = os.path.dirname
 source_path = str(dirname(dirname(os.path.abspath(__file__))))
 
 minisat_exe = source_path + "/build/bin/minisat"
-qsat_exe = source_path + "/build/test_build/QSat"
+qsat_exe = source_path + "/build/bin/QSat"
 input_cnf = source_path + "/benchmarks/" + sys.argv[1]
 
 # linux /bin/time executable
@@ -72,25 +72,17 @@ qsat_cmd = "/bin/time --format=\"%M\" " \
 
 
 start_time = time.time()
-process = subprocess.Popen(qsat_cmd, 
+process2 = subprocess.Popen("exec " + qsat_cmd, 
     shell=True,
     stdout=subprocess.DEVNULL,
     stderr=subprocess.DEVNULL) 
 
 try:
-    process.wait(timeout=timeout_lim)
+    process2.wait(timeout=timeout_lim)
 except subprocess.TimeoutExpired:
-    kill(process.pid)
+    kill(process2.pid)
     qsat_timedout = True
 qsat_exec_time = time.time() - start_time
-
-
-# compare outputs of minisat and qsat
-# normally outputs contains only 2 lines:
-# line 1 : SAT/UNSAT
-# line 2 : if SAT, display solution models
-# the solutions doesn't necessarily have to be the same
-# but SAT/UNSAT must match
 
 if not qsat_timedout:
     qsat_res = [line.strip() for line in open(qsat_solver_output)]
@@ -101,8 +93,6 @@ if not minisat_timedout:
     minisat_mem = float([line.strip() for line in open(minisat_mem_output)][1])
 
 # ignore the performance comparison for now
-# enable this when we wanna know the difference
-
 
 qsat_exec_time = format(qsat_exec_time, '.4f') if not qsat_timedout else ("> " + str(timeout_lim) + "(timed out)") 
 minisat_exec_time = format(minisat_exec_time, '.4f') if not minisat_timedout else ("> " + str(timeout_lim) + "(timed out)") 
@@ -144,6 +134,13 @@ if os.path.isfile(minisat_mem_output):
 if os.path.isfile(qsat_mem_output):
     os.remove(qsat_mem_output)
 
+
+# compare outputs of minisat and qsat
+# normally outputs contains only 2 lines:
+# line 1 : SAT/UNSAT
+# line 2 : if SAT, display solution models
+# the solutions doesn't necessarily have to be the same
+# but SAT/UNSAT must match
 
 # compare SAT/UNSAT results
 if not qsat_timedout and not minisat_timedout:
