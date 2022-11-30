@@ -34,7 +34,7 @@ if not os.path.exists(csv_path):
     first_row = True
 
 
-timeout_lim = 600
+timeout_lim = 700 
 
 minisat_solver_output  = input_cnf + ".minisat.output"
 qsat_solver_output = input_cnf + ".qsat.output"

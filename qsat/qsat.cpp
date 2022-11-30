@@ -37,7 +37,7 @@ Solver::Solver() :
 	cla_decay(0.999),
 	phase_saving(0),
 	restart_first(100), // set to -1 to disable
-	restart_inc(2),
+	restart_inc(1.5),
 
 	enable_reduce_db(true),
 	enable_rnd_pol(true),
@@ -349,9 +349,7 @@ Status Solver::search(int nof_conflicts) {
 		}
 	}
 
-
 }
-
 
 
 void Solver::analyze(int confl_cref, 
@@ -838,10 +836,17 @@ Status Solver::solve() {
 	int curr_restarts = 0;
 	while (_solver_search_status == Status::UNDEFINED) {
 		// calculate restart base with luby sequence
+    // or geometric sequence
 		double restart_base = enable_luby ? 
 			_luby(restart_inc, curr_restarts) : 
 			std::pow(restart_inc, curr_restarts);
-		
+	  
+    // reset restart counts if too large
+    // TODO: experimental
+    if (curr_restarts >= 40) {
+      curr_restarts = 0; 
+    }
+
 		_solver_search_status = search(restart_base * restart_first);	
 		curr_restarts++;
 	}
