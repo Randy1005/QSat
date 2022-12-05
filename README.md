@@ -2,13 +2,16 @@
 # QSat
 
 ## Features
-+ conflict-driven SAT solver
++ CDCL SAT solver
 + activity-based variable selection w/ random polarity
 
 ## Current Progress
 - [x] basic solver functionaliy (boolean constraint propagation + conflict analysis)
-- [ ] clause simplification
-- [ ] variable elimination
-- [ ] regression / integration test for comparing performance with minisat
+- [x] regression / integration test for comparing performance with minisat
+= [x] geometric solver restart strategy
 
+## TODO
+- [ ] self-subsumption
+- [ ] variable elimination
+- [ ] phase saving
 

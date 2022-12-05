@@ -37,7 +37,7 @@ Solver::Solver() :
 	cla_decay(0.999),
 	phase_saving(0),
 	restart_first(100), // set to -1 to disable
-	restart_inc(1.5),
+	restart_inc(1.8),
 
 	enable_reduce_db(true),
 	enable_rnd_pol(true),
@@ -325,10 +325,10 @@ Status Solver::search(int nof_conflicts) {
 		else {
 			// no conflict, we can continue making decisions
 			
-			// exceed conflict budget, should restart
+			// exceeded restart interval, should restart
 			if (nof_conflicts >= 0 && conflict_c >= nof_conflicts) {
 				_cancel_until(0);
-				return Status::UNDEFINED;
+        return Status::UNDEFINED;
 			}
 
 			// exceeded max_learnt, should reduce clause database
@@ -361,7 +361,6 @@ void Solver::analyze(int confl_cref,
 	Literal p = LIT_UNDEF;
 	// leave room for the asserting literal
 	out_learnt.push_back(p);
-
 
 	// traverse from the tail of the trail
 	int index = _trail.size() - 1;
@@ -810,7 +809,6 @@ void Solver::relocate_all() {
 		}
 		
 	}
-
 
 	new_clauses.resize(num_orig_clauses + _learnts.size());
 	_clauses.resize(num_orig_clauses + _learnts.size());
