@@ -3,7 +3,7 @@
 
 ## Features
 + CDCL SAT solver
-+ activity-based variable selection w/ random polarity
++ activity-based variable selection 
 
 ## Current Progress
 - [x] basic solver functionaliy (boolean constraint propagation + conflict analysis)
