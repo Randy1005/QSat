@@ -84,6 +84,14 @@ add_subdirectory(inttests)
 # benchmark directories
 # -----------------------------------------------------------------------------
 
+# SC-2022 benchmarks : SAT Competition 2022
+add_subdirectory(${QSAT_BENCHMARK_DIR}/SC-2022)
+
+
+# parafrost benchmarks
+add_subdirectory(${QSAT_BENCHMARK_DIR}/parafrost-benchmarks)
+
+
 # uniform random 3-SAT 
 add_subdirectory(${QSAT_BENCHMARK_DIR}/uf50-218)
 add_subdirectory(${QSAT_BENCHMARK_DIR}/uuf50-218)
@@ -137,8 +145,9 @@ add_subdirectory(${QSAT_BENCHMARK_DIR}/pret)
 # SSA benchmarks : circuit fault analysis: single-stuck-at fault
 add_subdirectory(${QSAT_BENCHMARK_DIR}/ssa)
 
-# SC-2022 benchmarks : SAT Competition 2022
-add_subdirectory(${QSAT_BENCHMARK_DIR}/SC-2022)
+# IBM bounded model checking benchmarks
+add_subdirectory(${QSAT_BENCHMARK_DIR}/ibm-bmc)
+
 
 
 
