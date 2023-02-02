@@ -333,13 +333,41 @@ Status Solver::search(int nof_conflicts) {
 			// exceeded max_learnt, should reduce clause database
 			if (static_cast<double>(_learnts.size()) - num_assigns() >= max_learnts &&
 					enable_reduce_db) {
-				reduce_db();	
+				reduce_db();
 			}
 
-			decisions++;
-			Literal next_lit = _pick_branch_lit();
+			Literal next_lit = LIT_UNDEF;
+
+      // perform user provided assumptions
+      while (decision_level() < _assumptions.size()) {
+        Literal p = _assumptions[decision_level()];
+        if (value(p) == Status::TRUE) {
+          // dummy decision level
+          _new_decision_level();
+        }
+        else if (value(p) == Status::FALSE) {
+          // TODO:
+          // What should we do here?
+          // This is a final conflict 
+          // in terms of assumptions
+          // We wanna reason the set of assumptions
+          // that led to the assignment of 'p'
+          return Status::FALSE;
+        }
+        else {
+          next_lit = p;
+          break;
+        }
+      }
+
+
 			if (next_lit == LIT_UNDEF) {
-				return Status::TRUE;
+        // new variable decision
+        decisions++;
+        next_lit = _pick_branch_lit();
+        if (next_lit == LIT_UNDEF) {
+				  return Status::TRUE;
+        }
 			}
 
 			// begin new decision level
@@ -606,8 +634,6 @@ Literal Solver::_pick_branch_lit() {
 	
 	int next = VAR_UNDEF;
 
-	// TODO: make a random decision first?
-
 	// activity-based decision
 	while (next == VAR_UNDEF || value(next) != Status::UNDEFINED) {
 		if (_order_heap.empty()) {
@@ -626,7 +652,7 @@ Literal Solver::_pick_branch_lit() {
 		return LIT_UNDEF;
 	}
 	else {
-		// WARNING:
+		// NOTE:
 		// variable stored in heap are indexed from 0
 		// but our lit(var) interface requires it to index from 1
 		// BE VERY CAUTIOUS in the future
@@ -719,7 +745,6 @@ void Solver::_smudge_watch(int p) {
 		_watches_dirty[p] = true;
 		_watches_dirties.push_back(p);
 	}
-
 }
 
 void Solver::_clean_watch(int p) {
@@ -804,7 +829,6 @@ void Solver::clean_all_watches() {
 			assert(!_watches_dirty[_watches_dirties[i]]);
 		}
 	}
-
 	_watches_dirties.clear();
 }
 
@@ -907,6 +931,12 @@ Status Solver::solve() {
 	// _cancel_until(0);
 	return _solver_search_status;
 }
+
+Status Solver::solve(const std::vector<Literal>& assumps) { 
+  _assumptions = std::move(assumps);
+  return solve();
+}
+
 
 const std::vector<Clause>& Solver::clauses() const {
   return _clauses;

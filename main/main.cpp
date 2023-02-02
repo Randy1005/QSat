@@ -9,11 +9,23 @@ int main(int argc, char* argv[]) {
   }
 
   qsat::Solver s;
+	qsat::Status res;
 	s.read_dimacs(argv[1]);
   
 	std::chrono::steady_clock::time_point start_time, end_time; 
   start_time = std::chrono::steady_clock::now(); 
-	qsat::Status res = s.solve();
+	
+	
+	tf::Taskflow taskflow;
+	tf::Executor executor;
+	auto [example, solve] = taskflow.emplace(
+			[]() { std::cout << "another task\n"; },
+			[&res, &s]() { res = s.solve(); }
+	);
+
+
+	executor.run(taskflow).wait();
+	
 	end_time = std::chrono::steady_clock::now(); 
 
 	std::cout << "================ QSat Statisitics ================\n";

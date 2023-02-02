@@ -49,6 +49,7 @@ struct Literal {
   friend class Solver;
 	
 	Literal() = default;
+  Literal(const Literal& p) = default;
 
   /**
   @brief constructs a literal with a given variable
@@ -233,6 +234,13 @@ public:
   @returns true if the input cnf is satisfiable, otherwise return false
   */
   Status solve();
+
+  /**
+  @brief solve with a set of assumptions
+  assumptions are a set of literals that the user
+  forces to be evaluated to true
+  */
+  Status solve(const std::vector<Literal>& assumptions);
 
   /**
   @brief a getter method for the stored clauses
@@ -546,7 +554,10 @@ private:
 
   // assignment vector 
   std::vector<Status> _assigns;
-	
+
+  // user assumptions
+  std::vector<Literal> _assumptions;
+
 	// solution model (if SAT)
 	std::vector<Status> _model;
 
@@ -617,8 +628,6 @@ private:
   // output file stream to write to z3py
   std::ofstream _z3_ofs;
 
-  // taskflow object
-  tf::Taskflow _taskflow;
 };
 
 
