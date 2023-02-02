@@ -8,7 +8,7 @@
 ## Current Progress
 - [x] basic solver functionaliy (boolean constraint propagation + conflict analysis)
 - [x] regression / integration test for comparing performance with minisat
-= [x] geometric solver restart strategy
+- [x] geometric solver restart strategy
 
 ## TODO
 - [ ] self-subsumption
