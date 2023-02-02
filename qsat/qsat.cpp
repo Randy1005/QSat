@@ -9,7 +9,7 @@ Literal::Literal(int var) {
   if (var == 0) {
     throw std::runtime_error("variable cannot be zero");
   }
- id = (var > 0) ? 2 * var - 2 : 2 * -var - 1;
+  id = (var > 0) ? 2 * var - 2 : 2 * -var - 1;
 }
 
 Clause::Clause(const std::vector<Literal>& lits, bool is_learnt) :
@@ -37,7 +37,7 @@ Solver::Solver() :
 	cla_decay(0.999),
 	phase_saving(0),
 	restart_first(100), // set to -1 to disable
-	restart_inc(1.1),
+	restart_inc(1.5),
 
 	enable_reduce_db(true),
 	enable_rnd_pol(false),
@@ -87,7 +87,7 @@ void Solver::read_dimacs(std::istream& is) {
 }
 
 void Solver::_read_clause(int variable, std::vector<Literal>& lits) { 
-  lits.push_back(Literal(variable));
+  lits.emplace_back(variable);
 }
 
 void Solver::add_clause(std::vector<Literal>&& lits) {
@@ -120,7 +120,7 @@ void Solver::add_clause(std::vector<Literal>&& lits) {
 	}
 	else {
 		// initialize watcher literals for this clause
-		_clauses.push_back(Clause(std::move(lits)));
+		_clauses.emplace_back(std::move(lits));
 		_attach_clause(num_clauses() - 1);
 	}
 
@@ -156,7 +156,7 @@ void Solver::add_clause(const std::vector<Literal>& lits) {
 	}
 	else {
 		// initialize watcher literals for this clause
-		_clauses.push_back(Clause(lits));
+		_clauses.emplace_back(lits);
 		_attach_clause(num_clauses() - 1);
 	}
 	
@@ -304,7 +304,7 @@ Status Solver::search(int nof_conflicts) {
 				// store the learnt clause
 				int learnt_cref = _clauses.size();
 				_learnts.push_back(learnt_cref);
-				_clauses.push_back(Clause(learnt_clause, true));
+				_clauses.emplace_back(learnt_clause, true);
 					
 				// initialize watches for this clause
 				_attach_clause(learnt_cref);
@@ -477,8 +477,8 @@ void Solver::_attach_clause(const int cref) {
 	const std::vector<Literal>& lits = _clauses[cref].literals;
 	assert(lits.size() > 1);
 
-	watches[(~lits[0]).id].push_back(Watcher(cref, lits[1]));
-	watches[(~lits[1]).id].push_back(Watcher(cref, lits[0]));
+	watches[(~lits[0]).id].emplace_back(cref, lits[1]);
+	watches[(~lits[1]).id].emplace_back(cref, lits[0]);
 
 	if (_clauses[cref].learnt) {
 		num_learnts++;
