@@ -9,6 +9,7 @@
 #include <random>
 #include <cmath>
 #include "heap.hpp"
+#include "taskflow/taskflow.hpp"
 // #include "intel_task_grammar.hpp"
 
 namespace qsat {
@@ -529,6 +530,12 @@ private:
 	double _luby(double y, int x);
 
 
+  /**
+   * @luby_mis
+   * maximum independent set algorithm
+   */
+  void _luby_mis();
+
   std::vector<Clause> _clauses; 
 
 	// learnt clauses
@@ -609,6 +616,9 @@ private:
 
   // output file stream to write to z3py
   std::ofstream _z3_ofs;
+
+  // taskflow object
+  tf::Taskflow _taskflow;
 };
 
 

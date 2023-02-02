@@ -37,12 +37,12 @@ Solver::Solver() :
 	cla_decay(0.999),
 	phase_saving(0),
 	restart_first(100), // set to -1 to disable
-	restart_inc(1.8),
+	restart_inc(1.1),
 
 	enable_reduce_db(true),
-	enable_rnd_pol(true),
+	enable_rnd_pol(false),
 	enable_luby(false),
-	learnt_size_factor(0.33),
+	learnt_size_factor(0.333),
 	_mtrng(_rd()),
 	_uni_real_dist(std::uniform_real_distribution(0.0, 1.0))
 {
@@ -167,8 +167,8 @@ int Solver::propagate() {
 	int confl_cref = CREF_UNDEF;
 	int num_props = 0;
 
+
 	while (_qhead < _trail.size()) {
-		
 		// move qhead forward, and get an enqueued fact p
 		// p is the literal we're propagating
 		Literal p = _trail[_qhead++];
@@ -179,7 +179,8 @@ int Solver::propagate() {
 		std::vector<Watcher>& ws = watches[p.id];
 		size_t i, j;
 		bool next_watcher;
-		for (i = j = 0; i < ws.size(); )	{
+
+		for (i = j = 0; i < ws.size(); ) {
 			next_watcher = false;
 			// no need to inspect clause if
 			// the blocker literal is already satisfied
@@ -189,7 +190,6 @@ int Solver::propagate() {
 				ws[j++] = ws[i++];
 				continue;
 			}
-
 
 			// make sure the false literal is data[1]
 			int cr = ws[i].cref;
@@ -263,7 +263,7 @@ int Solver::propagate() {
 		// keep the first ws.size - (i-j) watchers
 		ws.resize(ws.size() - i + j);
 	}
-	
+
 	propagations += num_props;
 	return confl_cref;
 }
@@ -296,7 +296,6 @@ Status Solver::search(int nof_conflicts) {
 			// undo everything until the backtrack level
 			_cancel_until(backtrack_level);
 		
-			
 			if (learnt_clause.size() == 1) {
 				// immediately enqueue the only literal
 				unchecked_enqueue(learnt_clause[0], CREF_UNDEF);
@@ -348,6 +347,7 @@ Status Solver::search(int nof_conflicts) {
 			unchecked_enqueue(next_lit, CREF_UNDEF);
 		}
 	}
+
 
 }
 
@@ -637,12 +637,12 @@ Literal Solver::_pick_branch_lit() {
 		// come up with a better polarity mode in the future
 		
 		Literal p(next + 1);
-		double prob = _uni_real_dist(_mtrng);
 	
 		// if random polarity mode is enabled
 		// there's a 5% of chance of picking the
 		// positive polarity
 		if (enable_rnd_pol) {
+		  double prob = _uni_real_dist(_mtrng);
 			return prob > 0.95 ? p : ~p;
 		}
 		else {
@@ -751,6 +751,50 @@ double Solver::_luby(double y, int x) {
 
 }
 
+void Solver::_luby_mis() {
+  std::vector<bool> visited(num_variables(), false);
+  std::vector<int> mis;
+
+  for (int v = 0; v < num_variables(); v++) {
+    if (visited[v]) {
+      continue;
+    }
+
+    mis.push_back(v);
+
+    // traverse v's watch list
+    Literal p(v + 1);
+    for (auto& w : watches[p.id]) {
+      for (auto& l : _clauses[w.cref].literals) {
+        if (!visited[var(l)] && var(l) != v) {
+          visited[var(l)] = true;
+        } 
+      } 
+    }
+
+    for (auto& w : watches[(~p).id]) {
+      for (auto& l : _clauses[w.cref].literals) {
+        if (!visited[var(l)] && var(l) != v) {
+          visited[var(l)] = true;
+        } 
+      } 
+    }
+
+  }
+
+
+  // print out the maximal independent set
+  /*
+  std::cout << "mis:\n";
+  for (int i = 0; i < mis.size(); i++) {
+    std::cout << mis[i] << " ";
+  }
+  std::cout << "\n";
+  */
+  std::cout << "mis.size = " << mis.size() << "\n";
+
+}
+
 void Solver::clean_all_watches() {
 	for (int i = 0; i < _watches_dirties.size(); i++) {
 		// dirties might contain duplicates
@@ -824,6 +868,11 @@ void Solver::reset() {
 }
 
 Status Solver::solve() {
+
+  // NOTE: testing mis
+  // _luby_mis();
+
+
 	_model.clear();
 
 	// initialize max learnt clause database size
@@ -832,14 +881,16 @@ Status Solver::solve() {
 	// TODO: budget can be defined too, conflict budget and propagtion budget
 	
 	int curr_restarts = 0;
-	while (_solver_search_status == Status::UNDEFINED) {
+
+  while (_solver_search_status == Status::UNDEFINED) {
 		// calculate restart base with luby sequence
     // or geometric sequence
 		double restart_base = enable_luby ? 
 			_luby(restart_inc, curr_restarts) : 
 			std::pow(restart_inc, curr_restarts);
 
-		_solver_search_status = search(restart_base * restart_first);	
+		_solver_search_status = search(restart_base * restart_first);
+
 		curr_restarts++;
 	}
 

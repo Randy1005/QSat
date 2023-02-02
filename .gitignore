@@ -16,6 +16,13 @@ _deps
 [Bb]uild/*
 [Bb]uild*
 [Bb]uild*/*
+[Bb]uild-debug/
+[Bb]uild-debug/*
+
+# benchmarks
+[Bb]enchmarks/
+[Bb]enchmarks/*
+
 
 # intel task files
 intel_task_files/

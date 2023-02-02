@@ -137,6 +137,8 @@ add_subdirectory(${QSAT_BENCHMARK_DIR}/pret)
 # SSA benchmarks : circuit fault analysis: single-stuck-at fault
 add_subdirectory(${QSAT_BENCHMARK_DIR}/ssa)
 
+# SC-2022 benchmarks : SAT Competition 2022
+add_subdirectory(${QSAT_BENCHMARK_DIR}/SC-2022)
 
 
 

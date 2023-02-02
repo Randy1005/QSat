@@ -34,19 +34,29 @@ if not os.path.exists(csv_path):
     first_row = True
 
 
-timeout_lim = 700 
+timeout_lim = 600 
 
 minisat_solver_output  = input_cnf + ".minisat.output"
 qsat_solver_output = input_cnf + ".qsat.output"
 minisat_mem_output = input_cnf + ".minisat.mem"
 qsat_mem_output = input_cnf + ".qsat.mem"
 
+
+# now running minisat with option -no-pre and -no-elim
+# TODO: might consider feeding cli options to this script as well
 minisat_timedout = False
+# minisat_cmd = "/bin/time --format=\"%M\" " \
+#    + minisat_exe + " -no-elim " + " -no-pre" + " "\
+#    + input_cnf + " "\
+#    + minisat_solver_output\
+#    + " 2> " + minisat_mem_output
+
 minisat_cmd = "/bin/time --format=\"%M\" " \
     + minisat_exe + " "\
     + input_cnf + " "\
     + minisat_solver_output\
     + " 2> " + minisat_mem_output
+
 
 # we direct all outputs to devnull for now
 start_time = time.time()
