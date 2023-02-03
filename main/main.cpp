@@ -8,9 +8,12 @@ int main(int argc, char* argv[]) {
     std::exit(EXIT_FAILURE);
   }
 
-  qsat::Solver s;
-	qsat::Status res;
-	s.read_dimacs(argv[1]);
+  qsat::Solver s0, s1, s2, s3;
+	qsat::Status res0, res1, res2, res3;
+	s0.read_dimacs(argv[1]);
+	s1.read_dimacs(argv[1]);
+	s2.read_dimacs(argv[1]);
+	s3.read_dimacs(argv[1]);
   
 	std::chrono::steady_clock::time_point start_time, end_time; 
   start_time = std::chrono::steady_clock::now(); 
@@ -18,16 +21,39 @@ int main(int argc, char* argv[]) {
 	
 	tf::Taskflow taskflow;
 	tf::Executor executor;
-	auto [example, solve] = taskflow.emplace(
-			[]() { std::cout << "another task\n"; },
-			[&res, &s]() { res = s.solve(); }
+
+	auto [t0, t1, t2, t3] = taskflow.emplace(
+			[&s0, &res0]() { 
+				qsat::Literal a{1}, b{2};
+				res0 = s0.solve({a, b});
+				std::cout << "s0 result = " << static_cast<int>(res0) << "\n";
+			},
+			[&s1, &res1]() { 
+				qsat::Literal a{1}, b{2};
+				res1 = s1.solve({~a, b});
+				std::cout << "s1 result = " << static_cast<int>(res1) << "\n";
+			},
+			[&s2, &res2]() { 
+				qsat::Literal a{1}, b{2};
+				res2 = s2.solve({a, ~b});
+				std::cout << "s2 result = " << static_cast<int>(res2) << "\n";
+			},
+			[&s3, &res3]() { 
+				qsat::Literal a{1}, b{2};
+				res3 = s3.solve({~a, ~b});
+				std::cout << "s3 result = " << static_cast<int>(res3) << "\n";
+			}
 	);
 
 
 	executor.run(taskflow).wait();
 	
 	end_time = std::chrono::steady_clock::now(); 
-
+	std::chrono::duration<double, std::milli> elapsed_time = end_time - start_time;  
+  std::cout << "run time: " 
+            << elapsed_time.count() / 1000.0 
+            << " s\n";
+	/*
 	std::cout << "================ QSat Statisitics ================\n";
 	std::cout << "num variables:\t" << s.num_variables() << "\n";
 	std::cout << "num clauses:\t" << s.num_orig_clauses << "\n";
@@ -55,6 +81,6 @@ int main(int argc, char* argv[]) {
 	}
 
 	std::cout << "==================================================\n";
-
+	*/
   return 0;
 }
