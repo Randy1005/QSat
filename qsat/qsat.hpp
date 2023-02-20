@@ -10,6 +10,7 @@
 #include <cmath>
 #include "heap.hpp"
 #include "taskflow/taskflow.hpp"
+#include "metis/metis.h"
 // #include "intel_task_grammar.hpp"
 
 namespace qsat {

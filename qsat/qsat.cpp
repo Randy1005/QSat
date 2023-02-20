@@ -37,7 +37,7 @@ Solver::Solver() :
 	cla_decay(0.999),
 	phase_saving(0),
 	restart_first(100), // set to -1 to disable
-	restart_inc(1.5),
+	restart_inc(1.1),
 
 	enable_reduce_db(true),
 	enable_rnd_pol(false),
