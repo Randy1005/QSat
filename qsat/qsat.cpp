@@ -892,12 +892,7 @@ void Solver::reset() {
 }
 
 Status Solver::solve() {
-
-  // NOTE: testing mis
-  // _luby_mis();
-
-
-	_model.clear();
+ 	_model.clear();
 
 	// initialize max learnt clause database size
 	max_learnts = num_orig_clauses * learnt_size_factor;
