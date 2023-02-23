@@ -23,6 +23,27 @@
 
 namespace bliss {
 
+
+void get_generators(std::vector<unsigned int>& gens,
+                    const unsigned int N,
+                    const unsigned int* perm,
+                    const unsigned int offset) {
+  assert(N > 0);
+  assert(perm);
+  unsigned int nof_cycles = 0;
+  std::vector<bool> seen(N, false);
+  for(unsigned int first = 0; first < N; first++) {
+    if(seen[first] or perm[first] == first) continue;
+    nof_cycles++;
+    gens.push_back(first + offset);
+    for(unsigned int i = perm[first]; i != first; i = perm[i]) {
+      seen[i] = true;
+      gens.push_back(i + offset);
+    }
+  }
+
+}
+
 size_t
 print_permutation(FILE* const fp,
 		  const unsigned int N,

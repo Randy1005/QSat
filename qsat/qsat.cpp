@@ -3,6 +3,8 @@
 #include <sstream>
 #include "qsat.hpp"
 
+
+
 namespace qsat {
 
 Literal::Literal(int var) {
