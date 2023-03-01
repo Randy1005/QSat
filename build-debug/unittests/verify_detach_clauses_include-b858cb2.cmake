@@ -1,5 +1,0 @@
-if(EXISTS "/home/randy/QSat/build-debug/unittests/verify_detach_clauses_tests-b858cb2.cmake")
-  include("/home/randy/QSat/build-debug/unittests/verify_detach_clauses_tests-b858cb2.cmake")
-else()
-  add_test(verify_detach_clauses_NOT_BUILT-b858cb2 verify_detach_clauses_NOT_BUILT-b858cb2)
-endif()
