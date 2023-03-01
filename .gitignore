@@ -18,6 +18,7 @@ _deps
 [Bb]uild*/*
 [Bb]uild-debug/
 [Bb]uild-debug/*
+[Bb]uild-debug*
 
 # benchmarks
 [Bb]enchmarks/
