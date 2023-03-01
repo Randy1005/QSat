@@ -1,12 +1,10 @@
 #include <iostream>
-#include <qsat/qsat.hpp>
 #include <chrono>
-#include "qsat/cnfgraph.hpp"
+#include <qsat/qsat.hpp>
 
-/*
 int main(int argc, char* argv[]) {
 	if (argc < 2) {
-    std::cerr << "Usage: ./QSat cnf_file [optional: out_file]" << std::endl;
+    std::cerr << "Usage: ./QSat cnf_file [optional: out_file]\n";
     std::exit(EXIT_FAILURE);
   }
 
@@ -21,7 +19,6 @@ int main(int argc, char* argv[]) {
 								end_t - start_t
 							 ).count() / 1000.0
             << " s\n";
-
 	std::cout << "================ QSat Statisitics ================\n";
 	std::cout << "num variables:\t" << s.num_variables() << "\n";
 	std::cout << "num clauses:\t" << s.num_orig_clauses << "\n";
@@ -47,8 +44,8 @@ int main(int argc, char* argv[]) {
 	
 	return 0;
 }
-*/
 
+/*
 int main(int argc, char* argv[]) {
 
   qsat::GraphManager gm;
@@ -81,6 +78,6 @@ int main(int argc, char* argv[]) {
 
   executor.run(taskflow);
 
-
   return 0;
 }
+*/
