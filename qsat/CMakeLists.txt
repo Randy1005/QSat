@@ -3,12 +3,9 @@ add_library(qsat qsat.cpp)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-target_link_libraries(qsat PRIVATE Threads::Threads)
+target_link_libraries(qsat PUBLIC Threads::Threads)
 set_property(TARGET qsat PROPERTY CXX_STANDARD 17)
 target_compile_options(qsat INTERFACE -Wall -Wextra -Wfatal-errors)
-
-
-
 
 find_package(breakid REQUIRED)
 

@@ -17,7 +17,7 @@ foreach(file ${files})
 
 	# message("Removing bad cnf characters ... for " ${CNF_NAME})
 	# message("bad input remover = " ${QSAT_BAD_INPUT_REMOVER})
-	execute_process(COMMAND ${Python3_EXECUTABLE} ${QSAT_BAD_INPUT_REMOVER} ${QSAT_BENCHMARK_DIR}/uuf125-538/${CNF_NAME})
+	# execute_process(COMMAND ${Python3_EXECUTABLE} ${QSAT_BAD_INPUT_REMOVER} ${QSAT_BENCHMARK_DIR}/uuf125-538/${CNF_NAME})
 
 	# message("IT_TEST_NAME = " ${IT_TEST_NAME})
 	add_test(${IT_TEST_NAME} ${QSAT_CHECKER} "uuf125-538/${CNF_NAME}")

@@ -42,12 +42,21 @@ Solver::Solver() :
 	restart_inc(1.1),
 
 	enable_reduce_db(true),
-	enable_rnd_pol(false),
+	enable_rnd_pol(true),
 	enable_luby(false),
 	learnt_size_factor(0.333),
-	_mtrng(_rd()),
+	
+  bid_verbosity(2),
+  bid_steps_lim(1000),
+
+  _mtrng(_rd()),
 	_uni_real_dist(std::uniform_real_distribution(0.0, 1.0))
+
 {
+  breakid.set_verbosity(bid_verbosity);
+  bid_steps_lim *= 1000LL;
+  breakid.set_steps_lim(bid_steps_lim);
+  breakid.set_useMatrixDetection(true);
 }
 
 void Solver::read_dimacs(const std::string& input_file) {
@@ -57,6 +66,46 @@ void Solver::read_dimacs(const std::string& input_file) {
     throw std::runtime_error("failed to open a file");
   }
   read_dimacs(ifs);
+}
+
+void Solver::read_dimacs_bid(const std::string& input_file) {
+  std::ifstream file(input_file);
+  if (!file) {
+    std::cerr << "BreakID Error: No CNF file found.\n";
+    std::exit(EXIT_FAILURE);
+  }
+  std::string line;
+  std::vector<BID::BLit> inclause;
+  while (std::getline(file, line)) {
+    if (line.size() == 0 || line.front() == 'c') {
+      // do nothing, this is a comment line
+    } else if (line.front() == 'p') {
+      std::string info = line.substr(6);
+      std::istringstream iss(info);
+      uint32_t nbVars;
+      iss >> nbVars;
+      uint32_t nbClauses;
+      iss >> nbClauses;
+      _bid_clauses.reserve(nbClauses);
+    } else {
+      //  parse the clauses, removing tautologies and double lits
+      std::istringstream iss(line);
+      int l;
+      while (iss >> l) {
+        if (l == 0) {
+          if (inclause.size() == 0) {
+            std::cerr << "BreakID Error: Theory cannot contain empty clause.\n";
+            std::exit(EXIT_FAILURE);
+          }
+          _bid_clauses.push_back(inclause);
+          inclause.clear();
+        } else {
+          inclause.push_back(BID::BLit(abs(l)-1, l < 0));
+        }
+      }
+    }
+  }
+  
 }
 
 void Solver::read_dimacs(std::istream& is) {
@@ -74,7 +123,7 @@ void Solver::read_dimacs(std::istream& is) {
       std::getline(is, buf);
     }
     else if (buf == "p") {
-      is >> buf >> buf >> num_orig_clauses;
+      is >> buf >> num_orig_vars >> num_orig_clauses;
     }
     else {
       variable = std::stoi(buf);
@@ -86,6 +135,32 @@ void Solver::read_dimacs(std::istream& is) {
       literals.clear();
     }
   }
+}
+
+void Solver::build_graph() {
+  breakid.start_dynamic_cnf(num_variables());
+
+  for (auto cl : _bid_clauses) {
+    breakid.add_clause(cl.data(), cl.size()); 
+  }
+
+  breakid.end_dynamic_cnf();
+}
+
+void Solver::add_symm_brk_cls() {
+  const auto brk_cls = breakid.get_brk_cls();
+  for (auto cl : brk_cls) {
+    std::vector<Literal> lits;
+    for (auto l : cl) {
+      Literal lit = LIT_UNDEF;
+      lit.id = l.toInt();
+      lits.push_back(lit); 
+    }
+    add_clause(std::move(lits));
+  }
+
+  num_orig_clauses = _clauses.size();
+
 }
 
 void Solver::_read_clause(int variable, std::vector<Literal>& lits) { 
@@ -625,7 +700,6 @@ void Solver::_init() {
   for (size_t i = 0; i < num_variables(); i++) {
     _assigns[i] = Status::UNDEFINED; // unassigned state
   }
-
 }
 
 Literal Solver::_pick_branch_lit() {
@@ -671,7 +745,7 @@ Literal Solver::_pick_branch_lit() {
 		// positive polarity
 		if (enable_rnd_pol) {
 		  double prob = _uni_real_dist(_mtrng);
-			return prob > 0.95 ? p : ~p;
+			return prob > 0.98 ? p : ~p;
 		}
 		else {
 			return ~p;

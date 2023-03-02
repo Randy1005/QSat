@@ -213,7 +213,25 @@ public:
   @param input_file the dimacs cnf file name
   */
   void read_dimacs(const std::string& input_file);
-  
+ 
+
+  /**
+  @brief reads in dimacs cnf file, and store the literals and clauses
+  in the BreakID data structures
+  @param input_file the dimacs cnf file name
+  */
+  void read_dimacs_bid(const std::string& input_file);
+
+  /**
+  @brief build constraint graph using the bliss library
+  */
+  void build_graph();
+
+  /**
+  @brief add symmetry breaking clauses to the original CNF
+  */
+  void add_symm_brk_cls();
+
   /**
   @brief dumps the solver info via std::ostream
   @code{.cpp}
@@ -419,12 +437,15 @@ public:
 	uint64_t num_learnts = 0;
 	uint64_t starts = 0;
 	int num_orig_clauses;
-	
+  int num_orig_vars;
+
 	// user-configurable variables
 	double var_inc;
 	double cla_inc;
 	double var_decay;
 	double cla_decay;
+  int bid_verbosity;
+  int64_t bid_steps_lim;
 
 	int restart_first; // the initial restart limit
 	double restart_inc; // the factor which restart limit is multiplied at each restart
@@ -439,6 +460,10 @@ public:
 	// configurable phase-saving [0: no, 1: limited, 2: full]
 	int phase_saving;
 
+
+  // the BreakID instance
+  // for symmetry detection and breaking
+  BID::BreakID breakid;
 private:
 
   /**
@@ -546,6 +571,8 @@ private:
   void _luby_mis();
 
   std::vector<Clause> _clauses; 
+
+  std::vector<std::vector<BID::BLit>> _bid_clauses;
 
 	// learnt clauses
 	// stores the index to the learnt clauses
