@@ -10,11 +10,15 @@ int main(int argc, char* argv[]) {
   }
 
 	tf::Taskflow taskflow;
+	tf::Taskflow sycltf;
+	sycl::queue queue;	
 	tf::Executor executor;
+
+	
+
 
 	qsat::Solver s0;
 	qsat::Solver s1;
-	std::atomic<bool> stop = false;
 	
 	auto [readcnf, 
 			  readcnf_bid, 

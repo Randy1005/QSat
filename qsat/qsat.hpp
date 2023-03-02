@@ -10,6 +10,7 @@
 #include <cmath>
 #include "heap.hpp"
 #include "taskflow/taskflow.hpp"
+#include "taskflow/sycl/syclflow.hpp"
 #include <breakid.hpp>
 // #include "intel_task_grammar.hpp"
 

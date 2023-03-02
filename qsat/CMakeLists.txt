@@ -1,4 +1,10 @@
 add_library(qsat qsat.cpp)
+message(STATUS "$ENV{DPCPP_ROOT}")
+
+target_include_directories(qsat PUBLIC 
+  /home/randy/sycl_workspace/llvm/build/include/sycl
+  /home/randy/sycl_workspace/llvm/build/include/)
+
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)

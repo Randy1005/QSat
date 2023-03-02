@@ -47,7 +47,7 @@ Solver::Solver() :
 	learnt_size_factor(0.333),
 	
   bid_verbosity(2),
-  bid_steps_lim(1000),
+  bid_steps_lim(10000),
 
   _mtrng(_rd()),
 	_uni_real_dist(std::uniform_real_distribution(0.0, 1.0))
@@ -154,7 +154,7 @@ void Solver::add_symm_brk_cls() {
     for (auto l : cl) {
       Literal lit = LIT_UNDEF;
       lit.id = l.toInt();
-      lits.push_back(lit); 
+      lits.push_back(std::move(lit)); 
     }
     add_clause(std::move(lits));
   }

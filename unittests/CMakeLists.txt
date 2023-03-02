@@ -15,7 +15,9 @@ foreach(unittest IN LISTS QSAT_UNITTESTS)
 	add_test(NAME ${unittest} COMMAND ${unittest})	
 	set_property(TEST ${unittest} PROPERTY LABELS "unit")
   target_include_directories(${unittest} PRIVATE ${PROJECT_SOURCE_DIR} ${QSAT_3RD_PARTY_DIR}/doctest)
-  target_link_libraries(${unittest} LINK_PUBLIC qsat LINK_PUBLIC stdc++fs)
+  target_link_libraries(${unittest} LINK_PUBLIC 
+                        qsat 
+                        stdc++fs)
   doctest_discover_tests(${unittest})
 endforeach()
 
