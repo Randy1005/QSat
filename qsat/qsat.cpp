@@ -46,7 +46,7 @@ Solver::Solver() :
 	enable_luby(false),
 	learnt_size_factor(0.333),
 	
-  bid_verbosity(2),
+  bid_verbosity(1),
   bid_steps_lim(10000),
 
   _mtrng(_rd()),
@@ -354,7 +354,9 @@ Status Solver::search(int nof_conflicts) {
 
 	for (;;) {
 		int confl_cref = propagate();
-		if (confl_cref != CREF_UNDEF) {
+		sycl_check_subsumptions();
+    
+    if (confl_cref != CREF_UNDEF) {
 			// conflict encountered!
 			conflicts++;
 
@@ -564,6 +566,29 @@ void Solver::analyze(int confl_cref,
 		_seen[i] = false;
 	}
 }
+
+
+void Solver::sycl_check_subsumptions() {
+  // malloc flat array of literals
+  std::vector<int> lits_seq;
+  std::vector<int> indices;
+  indices.push_back(0);
+  std::vector<Literal> lits = _clauses[0].literals;
+  for (const auto l : lits) {
+    lits_seq.push_back(l.id);
+  }
+
+  for (size_t i = 1; i < _clauses.size(); i++) {
+    lits = _clauses[i].literals;
+    for (const auto l : lits) {
+      lits_seq.push_back(l.id);
+    }
+
+    indices.push_back(lits.size() + indices[i-1]);
+  } 
+
+}
+
 
 void Solver::remove_clause(const int cref) {
 	Clause& c = _clauses[cref];

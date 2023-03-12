@@ -8,10 +8,10 @@ project(QSat VERSION 1.0)
 set(CMAKE_CXX_STANDARD 17)
 
 # set default compiler to be intel dpc++
-# set(CMAKE_C_COMPILER DPCPP_COMPILER)
-# set(CMAKE_CXX_COMPILER $ENV{DPCPP_COMPILER})
+set(CMAKE_C_COMPILER $ENV{DPCPP_COMPILER})
+set(CMAKE_CXX_COMPILER $ENV{DPCPP_COMPILER})
 # set(CMAKE_CXX_FLAGS "-fsycl -fsycl-targets=spir64_x86_64,nvptx64-nvidia-cuda")
-set(CMAKE_CXX_FLAGS "-fsycl -fsycl-targets=nvptx64-nvidia-cuda")
+set(CMAKE_CXX_FLAGS "-fsycl -fsycl-targets=nvptx64-nvidia-cuda -fsycl-unnamed-lambda")
 
 # test that filesystem header actually is there and works
 
@@ -22,12 +22,12 @@ set(CMAKE_CXX_FLAGS "-fsycl -fsycl-targets=nvptx64-nvidia-cuda")
 
 
 # link libraries
-find_library(SYCL_LIB NAMES sycl libsycl HINTS /home/randy/sycl_workspace/llvm/build/lib/ REQUIRED)
+
+# find sycl library
+find_library(SYCL_LIB NAMES sycl libsycl HINTS $ENV{DPCPP_ROOT}/llvm/build/lib/ REQUIRED)
 
 
-message(STATUS "sycl lib path=" ${SYCL_LIB})
-
-
+message(STATUS "SYCL lib path=" ${SYCL_LIB})
 
 # set compilation flags
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")

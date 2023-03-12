@@ -419,6 +419,14 @@ public:
 	void relocate_all();
 
 
+  /**
+   * @brief sycl_check_subsumptions
+   * if a clause A is a subset of clause B
+   * clause B can be removed, because A is more
+   * restrictive than B regarding satisfiability
+   */
+  void sycl_check_subsumptions();
+
 	/**
 	 * intel task file transpiling
 	 */

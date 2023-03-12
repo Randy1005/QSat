@@ -14,8 +14,23 @@ int main(int argc, char* argv[]) {
 	sycl::queue queue;	
 	tf::Executor executor;
 
-	
 
+	int N = 1000;
+	auto X = sycl::malloc_shared<float>(N, queue);
+  auto Y = sycl::malloc_shared<float>(N, queue);
+  
+  sycltf.emplace_on([&](tf::syclFlow& sf){
+		tf::syclTask fillX = sf.fill(X, 1.0f, N).name("fillX");
+    tf::syclTask fillY = sf.fill(Y, 2.0f, N).name("fillY");
+    tf::syclTask saxpy = sf.parallel_for(sycl::range<1>(N), 
+      [=] (sycl::id<1> id) {
+        X[id] = 3.0f * X[id] + Y[id];
+      }
+    ).name("saxpy");
+    saxpy.succeed(fillX, fillY);
+  }, queue).name("syclFlow");
+  
+  executor.run(sycltf).wait();	
 
 	qsat::Solver s0;
 	qsat::Solver s1;
@@ -27,7 +42,7 @@ int main(int argc, char* argv[]) {
 				solve_bid] = 
 	taskflow.emplace(
 		[&]() {
-			s0.read_dimacs(argv[1]);
+			// s0.read_dimacs(argv[1]);
 		},
 		[&]() {
 			s1.read_dimacs_bid(argv[1]);
@@ -48,6 +63,7 @@ int main(int argc, char* argv[]) {
 						
 		},
 		[&]() {
+			/*
 			auto start_t = std::chrono::steady_clock::now(); 
 			qsat::Status res = s0.solve();
 			auto end_t = std::chrono::steady_clock::now(); 
@@ -78,6 +94,7 @@ int main(int argc, char* argv[]) {
 				s0.dump(os);
 			}
 			std::cout << "==================================================\n";
+			*/
 		},
 		[&]() {
 			auto start_t = std::chrono::steady_clock::now(); 
@@ -110,7 +127,6 @@ int main(int argc, char* argv[]) {
 				s1.dump(os);
 			}
 			std::cout << "==================================================\n";
-			
 		}
 
 	);
