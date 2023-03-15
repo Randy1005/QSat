@@ -10,62 +10,40 @@ int main(int argc, char* argv[]) {
   }
 
 	tf::Taskflow taskflow;
-	tf::Taskflow sycltf;
-	sycl::queue queue;	
 	tf::Executor executor;
 
 
-	int N = 1000;
-	auto X = sycl::malloc_shared<float>(N, queue);
-  auto Y = sycl::malloc_shared<float>(N, queue);
-  
-  sycltf.emplace_on([&](tf::syclFlow& sf){
-		tf::syclTask fillX = sf.fill(X, 1.0f, N).name("fillX");
-    tf::syclTask fillY = sf.fill(Y, 2.0f, N).name("fillY");
-    tf::syclTask saxpy = sf.parallel_for(sycl::range<1>(N), 
-      [=] (sycl::id<1> id) {
-        X[id] = 3.0f * X[id] + Y[id];
-      }
-    ).name("saxpy");
-    saxpy.succeed(fillX, fillY);
-  }, queue).name("syclFlow");
-  
-  executor.run(sycltf).wait();	
-
-	qsat::Solver s0;
-	qsat::Solver s1;
+	qsat::Solver s;
 	
 	auto [readcnf, 
 			  readcnf_bid, 
 	      break_sym,
-				solve,
 				solve_bid] = 
 	taskflow.emplace(
 		[&]() {
-			// s0.read_dimacs(argv[1]);
+			s.read_dimacs(argv[1]);
 		},
 		[&]() {
-			s1.read_dimacs_bid(argv[1]);
-			s1.read_dimacs(argv[1]);
+			s.read_dimacs_bid(argv[1]);
 		},
 		[&]() {
-			s1.build_graph();
-			s1.breakid.detect_subgroups();
-			s1.breakid.break_symm();
-			if (s1.bid_verbosity) {
-				s1.breakid.print_symm_break_stats();
+			s.build_graph();
+			s.breakid.detect_subgroups();
+			s.breakid.break_symm();
+			if (s.bid_verbosity) {
+				s.breakid.print_symm_break_stats();
 			}
 			std::cout << "Num sym breaking clauses: " << 
-									 s1.breakid.get_num_break_cls() << "\n";
-			s1.add_symm_brk_cls();
+									 s.breakid.get_num_break_cls() << "\n";
+			s.add_symm_brk_cls();
 			std::cout << "Num total clauses: " <<
-									 s1.num_clauses() << "\n";
-						
+									 s.num_clauses() << "\n";
+			
+			s.init_device_db();
 		},
 		[&]() {
-			/*
 			auto start_t = std::chrono::steady_clock::now(); 
-			qsat::Status res = s0.solve();
+			qsat::Status res = s.solve();
 			auto end_t = std::chrono::steady_clock::now(); 
 			std::cout << "================ QSat Statisitics ================\n";
 			std::cout << "run time: " 
@@ -73,11 +51,11 @@ int main(int argc, char* argv[]) {
 										end_t - start_t
 									 ).count() / 1000.0
 								<< " s\n";
-			std::cout << "num variables:\t" << s0.num_variables() << "\n";
-			std::cout << "num clauses:\t" << s0.num_orig_clauses << "\n";
-			std::cout << "restarts:\t" << s0.starts << "\n";
-			std::cout << "conflicts:\t" << s0.conflicts << "\n";
-			std::cout << "propagations:\t" << s0.propagations << "\n";
+			std::cout << "num variables:\t" << s.num_variables() << "\n";
+			std::cout << "num clauses:\t" << s.num_orig_clauses << "\n";
+			std::cout << "restarts:\t" << s.starts << "\n";
+			std::cout << "conflicts:\t" << s.conflicts << "\n";
+			std::cout << "propagations:\t" << s.propagations << "\n";
 		 
 			if (res == qsat::Status::TRUE) {
 				std::cout << "+++ SAT +++\n";
@@ -91,59 +69,21 @@ int main(int argc, char* argv[]) {
 			
 			if (argc == 3) {
 				std::ofstream os(argv[2]);
-				s0.dump(os);
-			}
-			std::cout << "==================================================\n";
-			*/
-		},
-		[&]() {
-			auto start_t = std::chrono::steady_clock::now(); 
-			qsat::Status res = s1.solve();
-			auto end_t = std::chrono::steady_clock::now(); 
-			std::cout << "================ QSat Statisitics ================\n";
-			std::cout << "run time: " 
-								<< std::chrono::duration_cast<std::chrono::milliseconds>(
-										end_t - start_t
-									 ).count() / 1000.0
-								<< " s\n";
-			std::cout << "num variables:\t" << s1.num_variables() << "\n";
-			std::cout << "num clauses:\t" << s1.num_orig_clauses << "\n";
-			std::cout << "restarts:\t" << s1.starts << "\n";
-			std::cout << "conflicts:\t" << s1.conflicts << "\n";
-			std::cout << "propagations:\t" << s1.propagations << "\n";
-		 
-			if (res == qsat::Status::TRUE) {
-				std::cout << "+++ SAT +++\n";
-			}
-			else if (res == qsat::Status::UNDEFINED) {
-				std::cout << "*** UNDET ***\n";
-			}
-			else {
-				std::cout << "--- UNSAT ---\n";
-			}
-			
-			if (argc == 3) {
-				std::ofstream os(argv[2]);
-				s1.dump(os);
+				s.dump(os);
 			}
 			std::cout << "==================================================\n";
 		}
-
 	);
 
-	solve.name("solve");
 	readcnf.name("readcnf");
 	readcnf_bid.name("readcnf breakid");
 	break_sym.name("break symm");
 	solve_bid.name("solve breakid");
 
-	readcnf.precede(solve);
+	readcnf.precede(break_sym);
 	readcnf_bid.precede(break_sym);
 	break_sym.precede(solve_bid);
-
-	// taskflow.dump(std::cout);
 	executor.run(taskflow).wait();
-
 	
 	return 0;
 }

@@ -125,8 +125,6 @@ df = pandas.DataFrame([[sys.argv[1],
         'runtime_slowdown (qsat/minisat)',
         'mem_usage_diff (qsat/minisat)'])
 
-# df = pandas.concat(new_row, ignore_index=True)
-
 if first_row:
     df.to_csv(csv_path, mode='a', index=False)
 else:

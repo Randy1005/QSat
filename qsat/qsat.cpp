@@ -57,6 +57,7 @@ Solver::Solver() :
   bid_steps_lim *= 1000LL;
   breakid.set_steps_lim(bid_steps_lim);
   breakid.set_useMatrixDetection(true);
+  
 }
 
 void Solver::read_dimacs(const std::string& input_file) {
@@ -199,7 +200,7 @@ void Solver::add_clause(std::vector<Literal>&& lits) {
 		// initialize watcher literals for this clause
 		_clauses.emplace_back(std::move(lits));
 		_attach_clause(num_clauses() - 1);
-	}
+  }
 
 }
 
@@ -235,7 +236,7 @@ void Solver::add_clause(const std::vector<Literal>& lits) {
 		// initialize watcher literals for this clause
 		_clauses.emplace_back(lits);
 		_attach_clause(num_clauses() - 1);
-	}
+  }
 	
 }
 
@@ -569,24 +570,94 @@ void Solver::analyze(int confl_cref,
 
 
 void Solver::sycl_check_subsumptions() {
-  // malloc flat array of literals
-  std::vector<int> lits_seq;
-  std::vector<int> indices;
-  indices.push_back(0);
-  std::vector<Literal> lits = _clauses[0].literals;
-  for (const auto l : lits) {
-    lits_seq.push_back(l.id);
+}
+
+void Solver::init_device_db() {
+  // initialize memory for CNF on device
+  assert(num_clauses() != 0);
+ 
+  /*
+  // calculate the buckets needed for allocating clauses
+  // on gpu
+  // total buckets needed for clause c:
+  //  5 + |c| - 1 buckets
+  //
+  //  because a preallocated literal and other packed member takes
+  //  up 5 buckets (20 bytes), and every additional literal takes 
+  //  up another 1 bucket (4 bytes)
+  //
+  //  e.g.
+  //  C = {0, 2, 5}, buckets to store C = 5 + 3 - 1 = 7
+  size_t total_buckets = num_clauses() * 5;
+  for (auto c : _clauses) {
+    total_buckets += (c.literals.size() - 1); 
   }
+  
+  // we wanna allocate twice the size to
+  // ensure all the resolvents can fit in
+  // (and we would enforce the number of resolvents
+  // not to exceed the number of original clauses)
+  _d_cnf.clauses.mem = 
+    static_cast<SClause*>(
+      sycl::malloc_device(2 * total_buckets * 4, _queue)
+    );  
+  
+  assert(_d_cnf.clauses.mem); 
+  */
+  
 
-  for (size_t i = 1; i < _clauses.size(); i++) {
-    lits = _clauses[i].literals;
-    for (const auto l : lits) {
-      lits_seq.push_back(l.id);
+  // -----------------------------------------
+  // TODO: first, parallel construct occurrence table on device 
+  // ----------------------------------------
+  
+  
+  std::vector<uint32_t> lits, indices;
+  indices.emplace_back(0);
+  for (size_t i = 0; i < num_clauses(); i++) {
+    const auto ls = _clauses[i].literals;
+    for (auto l : ls) {
+      lits.emplace_back(static_cast<uint32_t>(l.id)); 
     }
+    indices.emplace_back(ls.size()+indices[i-1]);
+  }
+  
+  uint32_t* _sh_cnf = sycl::malloc_shared<uint32_t>(2*lits.size(), _queue); 
+  uint32_t* _sh_idxs = sycl::malloc_shared<uint32_t>(2*indices.size(), _queue); 
+  assert(_sh_cnf); 
+  assert(_sh_idxs); 
+ 
 
-    indices.push_back(lits.size() + indices[i-1]);
-  } 
+  _tf.emplace_on([&](tf::syclFlow& sf) {
+    tf::syclTask lits_h2d = sf.copy(_sh_cnf, lits.data(), lits.size())
+      .name("lits_h2d");
+   
+    
+    tf::syclTask idxs_h2d = sf.copy(_sh_idxs, indices.data(), indices.size())
+      .name("lits_h2d");
 
+    tf::syclTask test = sf.parallel_for(sycl::range<1>(lits.size()),
+      [=] (sycl::id<1> id) {
+        _sh_cnf[id] *= 100;
+      }
+    ).name("test");
+    
+
+    lits_h2d.precede(test);
+    idxs_h2d.precede(test);
+      
+  }, _queue);
+
+  
+
+  _executor.run(_tf).wait();
+
+   /*
+  tf::Task test = _tf.emplace([&]() {
+    std::cout << "sample cpu task alongside sycl\n";
+  });
+
+  _executor.run(_tf).wait();
+  */
 }
 
 
@@ -1136,10 +1207,9 @@ bool Solver::transpile_task_to_z3(const std::string& task_file_name) {
 bool Solver::transpile_task_to_dimacs(const std::string& task_file_name) {
   return true;
 }
-
 */
 
-}  // end of namespace qsat ---------------------------------------------------
+}  // end of namespace ---------------------------------------------------
 
 
 

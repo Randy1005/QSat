@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <random>
 #include <cmath>
+#include "sclause.hpp"
 #include "heap.hpp"
 #include "taskflow/taskflow.hpp"
 #include "taskflow/sycl/syclflow.hpp"
@@ -427,6 +428,8 @@ public:
    */
   void sycl_check_subsumptions();
 
+  void init_device_db();
+
 	/**
 	 * intel task file transpiling
 	 */
@@ -664,6 +667,25 @@ private:
 
   // output file stream to write to z3py
   std::ofstream _z3_ofs;
+
+  // sycl task queue
+  sycl::queue _queue;
+
+  // task flow object
+  tf::Taskflow _tf;
+  
+  // taskflow executor
+  tf::Executor _executor;
+
+  // literals stored in shared space
+  // between host and device
+  uint32_t* _sh_cnf; 
+
+  // indices to record clause c starts
+  // on nth literal
+  //
+  // indices[c] -> n
+  uint32_t* _sh_idxs;
 
 };
 
