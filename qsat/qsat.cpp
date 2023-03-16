@@ -3,8 +3,6 @@
 #include <sstream>
 #include "qsat.hpp"
 
-
-
 namespace qsat {
 
 Literal::Literal(int var) {
@@ -26,6 +24,13 @@ Clause::Clause(std::vector<Literal>&& lits, bool is_learnt) :
 {
 }
 
+void Clause::calc_signature() {
+  uint32_t sig = 0;
+  for (size_t i = 0; i < literals.size(); i++) {
+    sig |= 1 << (var(literals[i]) & 31);
+  }
+  signature = std::move(sig);
+}
 
 
 Solver::Solver() :
@@ -609,12 +614,22 @@ void Solver::init_device_db() {
   // -----------------------------------------
   // TODO: first, parallel construct occurrence table on device 
   // ----------------------------------------
-  
+   
   
   std::vector<uint32_t> lits, indices;
+  std::vector<ClauseInfo> cl_infos;
+  
   indices.emplace_back(0);
   for (size_t i = 0; i < num_clauses(); i++) {
-    const auto ls = _clauses[i].literals;
+    auto& c = _clauses[i];
+    const auto& ls = c.literals;
+    
+    // calculate signature for clause
+    c.calc_signature();
+    cl_infos.emplace_back(0, 0, 0, 0, 
+                          ls.size()*sizeof(uint32_t),
+                          0, c.signature); 
+
     for (auto l : ls) {
       lits.emplace_back(static_cast<uint32_t>(l.id)); 
     }

@@ -8,7 +8,6 @@
 #include <filesystem>
 #include <random>
 #include <cmath>
-#include "sclause.hpp"
 #include "heap.hpp"
 #include "taskflow/taskflow.hpp"
 #include "taskflow/sycl/syclflow.hpp"
@@ -20,6 +19,7 @@ namespace qsat {
 struct Clause;
 struct Literal;
 struct VarInfo;
+struct ClauseInfo;
 
 enum class Status {
   FALSE = 0,
@@ -122,6 +122,9 @@ struct Clause {
   */
   Clause& operator=(Clause&& rhs) = default;
 
+
+  void calc_signature();
+
   std::vector<Literal> literals;
 
 	// a learnt clause or not
@@ -141,11 +144,52 @@ struct Clause {
 	// we record where they will be moved to
 	// -1 means not relocated
 	int reloc = -1;
+
+  // signature (hashed to 32-bit)
+  uint32_t signature;
 };
 
 // constant:
 // an undefined/empty clause id
 const int CREF_UNDEF = -1; 
+
+
+// @brief shared clause info
+// state: ORIGINAL, LEARNT, DELETED
+// added: is resolvent?
+// flag:  contributes to gate extraction?
+// lbd:   literal block distance (look up glucose)
+// size:  clause size in bytes
+// sig:   clause signature (hash value of 32 bits)
+// used:  how long a LEARNT clause should be used 
+//        before deleted by database reduction
+struct ClauseInfo {
+  ClauseInfo(const char state, 
+      const char added, 
+      const char flag,
+      char used,
+      int size,
+      int lbd,
+      uint32_t sig) :
+    state(state),
+    added(added),
+    flag(flag),
+    used(used),
+    size(size),
+    lbd(lbd),
+    sig(sig)
+  {
+  }
+
+  
+
+  char state;
+  char added, flag;
+  char used;
+  int size, lbd;
+  uint32_t sig;
+};
+
 
 /**
  * @struct VarInfo
@@ -677,16 +721,20 @@ private:
   // taskflow executor
   tf::Executor _executor;
 
+  // @brief shared cnf
   // literals stored in shared space
   // between host and device
   uint32_t* _sh_cnf; 
-
+    
+  // @brief shared indices
   // indices to record clause c starts
   // on nth literal
   //
   // indices[c] -> n
   uint32_t* _sh_idxs;
 
+ 
+   
 };
 
 
