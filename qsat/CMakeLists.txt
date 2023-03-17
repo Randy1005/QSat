@@ -1,12 +1,15 @@
 add_library(qsat qsat.cpp)
 message(STATUS "$ENV{DPCPP_ROOT}")
 
+# specify other sources for the qsat library
+# (if any) with target_sources
+
 # include headers from sycl
 target_include_directories(qsat PUBLIC 
   $ENV{DPCPP_ROOT}/llvm/build/include/
 )
 
-
+# find the pthreads library
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
@@ -14,6 +17,7 @@ target_link_libraries(qsat PUBLIC Threads::Threads)
 set_property(TARGET qsat PROPERTY CXX_STANDARD 17)
 target_compile_options(qsat INTERFACE -Wall -Wextra -Wfatal-errors)
 
+# find the break id package
 find_package(breakid REQUIRED)
 
 if (breakid_FOUND)

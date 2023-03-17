@@ -9,17 +9,62 @@
 #include <random>
 #include <cmath>
 #include "heap.hpp"
+#include <breakid.hpp>
 #include "taskflow/taskflow.hpp"
 #include "taskflow/sycl/syclflow.hpp"
-#include <breakid.hpp>
+
 // #include "intel_task_grammar.hpp"
 
 namespace qsat {
 
+class Solver;
+struct SyclMM;
+struct DeviceData;
 struct Clause;
 struct Literal;
-struct VarInfo;
 struct ClauseInfo;
+struct VarInfo;
+
+
+// @brief shared clause info
+// state: ORIGINAL, LEARNT, DELETED
+// added: is resolvent?
+// flag:  contributes to gate extraction?
+// lbd:   literal block distance (look up glucose)
+// size:  clause size in bytes
+// sig:   clause signature (hash value of 32 bits)
+// used:  how long a LEARNT clause should be used 
+//        before deleted by database reduction
+struct ClauseInfo {
+  ClauseInfo(const char state, 
+      const char added, 
+      const char flag,
+      char used,
+      int size,
+      int lbd,
+      uint32_t sig) :
+    state(state),
+    added(added),
+    flag(flag),
+    used(used),
+    size(size),
+    lbd(lbd),
+    sig(sig)
+  {
+  }
+
+  
+
+  char state;
+  char added, flag;
+  char used;
+  int size, lbd;
+  uint32_t sig;
+};
+
+
+
+
 
 enum class Status {
   FALSE = 0,
@@ -153,42 +198,6 @@ struct Clause {
 // an undefined/empty clause id
 const int CREF_UNDEF = -1; 
 
-
-// @brief shared clause info
-// state: ORIGINAL, LEARNT, DELETED
-// added: is resolvent?
-// flag:  contributes to gate extraction?
-// lbd:   literal block distance (look up glucose)
-// size:  clause size in bytes
-// sig:   clause signature (hash value of 32 bits)
-// used:  how long a LEARNT clause should be used 
-//        before deleted by database reduction
-struct ClauseInfo {
-  ClauseInfo(const char state, 
-      const char added, 
-      const char flag,
-      char used,
-      int size,
-      int lbd,
-      uint32_t sig) :
-    state(state),
-    added(added),
-    flag(flag),
-    used(used),
-    size(size),
-    lbd(lbd),
-    sig(sig)
-  {
-  }
-
-  
-
-  char state;
-  char added, flag;
-  char used;
-  int size, lbd;
-  uint32_t sig;
-};
 
 
 /**
@@ -348,8 +357,8 @@ public:
   }
 	
 	
-	const Clause& clause(int i) const {
-		return _clauses[i];
+  std::vector<Clause>& clauses() {
+		return _clauses;
 	}
 
   /**
@@ -472,8 +481,6 @@ public:
    */
   void sycl_check_subsumptions();
 
-  void init_device_db();
-
 	/**
 	 * intel task file transpiling
 	 */
@@ -520,6 +527,11 @@ public:
   // the BreakID instance
   // for symmetry detection and breaking
   BID::BreakID breakid;
+
+  // device data pointer 
+  DeviceData* dev_data;
+  
+  
 private:
 
   /**
@@ -711,31 +723,9 @@ private:
 
   // output file stream to write to z3py
   std::ofstream _z3_ofs;
-
-  // sycl task queue
-  sycl::queue _queue;
-
-  // task flow object
-  tf::Taskflow _tf;
   
-  // taskflow executor
-  tf::Executor _executor;
-
-  // @brief shared cnf
-  // literals stored in shared space
-  // between host and device
-  uint32_t* _sh_cnf; 
-    
-  // @brief shared indices
-  // indices to record clause c starts
-  // on nth literal
-  //
-  // indices[c] -> n
-  uint32_t* _sh_idxs;
-
- 
-   
 };
+
 
 
 
@@ -845,6 +835,54 @@ inline bool Solver::is_removed(int cref) const {
 inline bool Solver::watcher_deleted(Watcher& w) const {
 	return _clauses[w.cref].mark == 1;
 }
+
+/**
+ * @brief Device Data
+ * Data storage for device
+ */
+struct DeviceData {
+
+  // @brief shared cnf
+  // literals stored in shared space
+  // between host and device
+  uint32_t* sh_cnf; 
+    
+  // @brief shared clause indices
+  // indices to record clause c starts
+  // on nth literal
+  //
+  // indices[c] -> n
+  uint32_t* sh_idxs;
+
+};
+
+
+
+
+struct SyclMM {
+  SyclMM() = default;
+
+  /**
+   * @brief initialize device database
+   *  initialize database informations:
+   *  1. shared cnf formula
+   *  2. shared clause indices
+   */
+  void init_device_db(DeviceData& d_data, Solver& s);
+
+  // @brief sycl task queue
+  sycl::queue queue;
+
+  // @brief task flow object
+  tf::Taskflow tf;
+
+  // @brief taskflow executor
+  tf::Executor executor;
+};
+
+
+
+
 
 }  // end of namespace --------------------------------------------------------
 

@@ -26,6 +26,40 @@ Clause::Clause(std::vector<Literal>&& lits, bool is_learnt) :
 
 void Clause::calc_signature() {
   uint32_t sig = 0;
+
+  // each literal signature is by hashing to 32-bit value
+  // by ANDing var(lit) with 31 (bitwise 111110000....0)
+  //                         ^            ^
+  //                         bit0         bit31
+  //
+  // then the clause signature is calculated by ORing all 
+  // the 2^(lit sig) together
+  //
+  //
+  // e.g. 
+  // c0.lits = {0, 2, 4}
+  // var(lits) = {0, 1, 2}
+  // -- sig(0) = 0 & 31 = 0
+  // -- sig(1) = 1 & 31 = 1
+  // -- sig(2) = 2 & 31 = 2
+  // sig(c0) = 2^0 | 2^1 | 2^2 = 2 = (111000.....0)
+  //
+  // essentially saying that c0 contains var 0, 1, 2
+  // but we don't know which literals they represent
+  // lits could be {0, 2, 4}, {1, 3, 5}, {0, 1, 2, 3, 4, 5} etc.
+  //
+  // for the subset test pruning
+  // say C = {0, 2, 4}, C' = {1, 3, 5}
+  // sig(C)   = 111000....0
+  // sig(C')  = 111000....0
+  // sig(C) & ~sig(C') = 0 ---> signature hit
+  // meaning all the variable abstracts in C matches up with
+  // all the variable abstracts in C'
+  // for these "signature hits" we need to do a full subset test
+  //
+  // otherwise if the var abstracts don't match, we know subsumptions
+  // doesn't exist
+  
   for (size_t i = 0; i < literals.size(); i++) {
     sig |= 1 << (var(literals[i]) & 31);
   }
@@ -56,7 +90,6 @@ Solver::Solver() :
 
   _mtrng(_rd()),
 	_uni_real_dist(std::uniform_real_distribution(0.0, 1.0))
-
 {
   breakid.set_verbosity(bid_verbosity);
   bid_steps_lim *= 1000LL;
@@ -347,6 +380,9 @@ int Solver::propagate() {
 		ws.resize(ws.size() - i + j);
 	}
 
+
+
+
 	propagations += num_props;
 	return confl_cref;
 }
@@ -575,104 +611,6 @@ void Solver::analyze(int confl_cref,
 
 
 void Solver::sycl_check_subsumptions() {
-}
-
-void Solver::init_device_db() {
-  // initialize memory for CNF on device
-  assert(num_clauses() != 0);
- 
-  /*
-  // calculate the buckets needed for allocating clauses
-  // on gpu
-  // total buckets needed for clause c:
-  //  5 + |c| - 1 buckets
-  //
-  //  because a preallocated literal and other packed member takes
-  //  up 5 buckets (20 bytes), and every additional literal takes 
-  //  up another 1 bucket (4 bytes)
-  //
-  //  e.g.
-  //  C = {0, 2, 5}, buckets to store C = 5 + 3 - 1 = 7
-  size_t total_buckets = num_clauses() * 5;
-  for (auto c : _clauses) {
-    total_buckets += (c.literals.size() - 1); 
-  }
-  
-  // we wanna allocate twice the size to
-  // ensure all the resolvents can fit in
-  // (and we would enforce the number of resolvents
-  // not to exceed the number of original clauses)
-  _d_cnf.clauses.mem = 
-    static_cast<SClause*>(
-      sycl::malloc_device(2 * total_buckets * 4, _queue)
-    );  
-  
-  assert(_d_cnf.clauses.mem); 
-  */
-  
-
-  // -----------------------------------------
-  // TODO: first, parallel construct occurrence table on device 
-  // ----------------------------------------
-   
-  
-  std::vector<uint32_t> lits, indices;
-  std::vector<ClauseInfo> cl_infos;
-  
-  indices.emplace_back(0);
-  for (size_t i = 0; i < num_clauses(); i++) {
-    auto& c = _clauses[i];
-    const auto& ls = c.literals;
-    
-    // calculate signature for clause
-    c.calc_signature();
-    cl_infos.emplace_back(0, 0, 0, 0, 
-                          ls.size()*sizeof(uint32_t),
-                          0, c.signature); 
-
-    for (auto l : ls) {
-      lits.emplace_back(static_cast<uint32_t>(l.id)); 
-    }
-    indices.emplace_back(ls.size()+indices[i-1]);
-  }
-  
-  uint32_t* _sh_cnf = sycl::malloc_shared<uint32_t>(2*lits.size(), _queue); 
-  uint32_t* _sh_idxs = sycl::malloc_shared<uint32_t>(2*indices.size(), _queue); 
-  assert(_sh_cnf); 
-  assert(_sh_idxs); 
- 
-
-  _tf.emplace_on([&](tf::syclFlow& sf) {
-    tf::syclTask lits_h2d = sf.copy(_sh_cnf, lits.data(), lits.size())
-      .name("lits_h2d");
-   
-    
-    tf::syclTask idxs_h2d = sf.copy(_sh_idxs, indices.data(), indices.size())
-      .name("lits_h2d");
-
-    tf::syclTask test = sf.parallel_for(sycl::range<1>(lits.size()),
-      [=] (sycl::id<1> id) {
-        _sh_cnf[id] *= 100;
-      }
-    ).name("test");
-    
-
-    lits_h2d.precede(test);
-    idxs_h2d.precede(test);
-      
-  }, _queue);
-
-  
-
-  _executor.run(_tf).wait();
-
-   /*
-  tf::Task test = _tf.emplace([&]() {
-    std::cout << "sample cpu task alongside sycl\n";
-  });
-
-  _executor.run(_tf).wait();
-  */
 }
 
 
@@ -1223,6 +1161,62 @@ bool Solver::transpile_task_to_dimacs(const std::string& task_file_name) {
   return true;
 }
 */
+
+
+void SyclMM::init_device_db(DeviceData& d_data, Solver& s) {
+  
+  // initialize memory for CNF on device
+  assert(s.num_clauses() != 0);
+  auto& cs = s.clauses();   
+  
+  // -----------------------------------------
+  // TODO: first, parallel construct occurrence table on device 
+  // ----------------------------------------
+  
+  std::vector<uint32_t> lits, indices;
+  std::vector<ClauseInfo> cl_infos;
+  
+  indices.emplace_back(0);
+  for (size_t i = 0; i < s.num_clauses(); i++) {
+    const auto& ls = cs[i].literals;
+    
+    // calculate signature for clause
+    cs[i].calc_signature();
+    cl_infos.emplace_back(0, 0, 0, 0, 
+                          ls.size()*sizeof(uint32_t),
+                          0, cs[i].signature); 
+
+    for (auto l : ls) {
+      lits.emplace_back(static_cast<uint32_t>(l.id)); 
+    }
+
+    if (i >= 1) {
+      indices.emplace_back(ls.size()+indices[i-1]);
+    }
+  }
+ 
+  assert(lits.size() != 0);
+  assert(indices.size() != 0);
+  
+  d_data.sh_cnf = sycl::malloc_shared<uint32_t>(2*lits.size(), queue); 
+  d_data.sh_idxs = sycl::malloc_shared<uint32_t>(2*indices.size(), queue); 
+  assert(d_data.sh_cnf); 
+  assert(d_data.sh_idxs); 
+
+  queue.memcpy(d_data.sh_cnf, lits.data(), sizeof(uint32_t)*lits.size());
+  queue.memcpy(d_data.sh_idxs, indices.data(), sizeof(uint32_t)*indices.size());
+  
+
+  queue.parallel_for(sycl::range<1>(lits.size()), [=](sycl::id<1> i) {
+    d_data.sh_cnf[i] *= 100; 
+  }).wait();
+
+}
+
+
+
+
+
 
 }  // end of namespace ---------------------------------------------------
 
