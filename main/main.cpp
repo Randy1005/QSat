@@ -51,10 +51,7 @@ int main(int argc, char* argv[]) {
 	tf::Taskflow taskflow;
 	tf::Executor executor;
 
-	qsat::DeviceData d_data;
 	qsat::Solver s;
-	s.dev_data = &d_data;
-	qsat::SyclMM syclmm;
 
 	auto [readcnf, 
 			  readcnf_bid, 
@@ -80,7 +77,6 @@ int main(int argc, char* argv[]) {
 			std::cout << "Num total clauses: " <<
 									 s.num_clauses() << "\n";
 		
-			syclmm.init_device_db(d_data, s);	
 		},
 		[&]() {
 			auto start_t = std::chrono::steady_clock::now(); 

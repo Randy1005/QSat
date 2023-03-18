@@ -380,11 +380,9 @@ int Solver::propagate() {
 		ws.resize(ws.size() - i + j);
 	}
 
-
-
-
 	propagations += num_props;
-	return confl_cref;
+	
+  return confl_cref;
 }
 
 
@@ -396,7 +394,6 @@ Status Solver::search(int nof_conflicts) {
 
 	for (;;) {
 		int confl_cref = propagate();
-		sycl_check_subsumptions();
     
     if (confl_cref != CREF_UNDEF) {
 			// conflict encountered!
@@ -1017,6 +1014,9 @@ void Solver::reset() {
 }
 
 Status Solver::solve() {
+  // initialize inprocessor database
+  init_device_db();
+
  	_model.clear();
 
 	// initialize max learnt clause database size
@@ -1163,28 +1163,37 @@ bool Solver::transpile_task_to_dimacs(const std::string& task_file_name) {
 */
 
 
-void SyclMM::init_device_db(DeviceData& d_data, Solver& s) {
+void Solver::init_device_db() {
   
   // initialize memory for CNF on device
-  assert(s.num_clauses() != 0);
-  auto& cs = s.clauses();   
+  assert(num_clauses() != 0);
   
   // -----------------------------------------
   // TODO: first, parallel construct occurrence table on device 
   // ----------------------------------------
-  
+ 
+
+  // construct literal sequence
+  // and clause lookup index list
+  //
+  // e.g.
+  // C0 = {0, 2, 8}, C1 = {1, 4, 5}
+  //
+  // lit seq =      {0 2 8 1 4 5}
+  //                 ^     ^
+  // lookup index = {0     3    }    
   std::vector<uint32_t> lits, indices;
   std::vector<ClauseInfo> cl_infos;
   
   indices.emplace_back(0);
-  for (size_t i = 0; i < s.num_clauses(); i++) {
-    const auto& ls = cs[i].literals;
+  for (size_t i = 0; i < num_clauses(); i++) {
+    const auto& ls = _clauses[i].literals;
     
     // calculate signature for clause
-    cs[i].calc_signature();
+    _clauses[i].calc_signature();
     cl_infos.emplace_back(0, 0, 0, 0, 
                           ls.size()*sizeof(uint32_t),
-                          0, cs[i].signature); 
+                          0, _clauses[i].signature); 
 
     for (auto l : ls) {
       lits.emplace_back(static_cast<uint32_t>(l.id)); 
@@ -1197,20 +1206,41 @@ void SyclMM::init_device_db(DeviceData& d_data, Solver& s) {
  
   assert(lits.size() != 0);
   assert(indices.size() != 0);
-  
-  d_data.sh_cnf = sycl::malloc_shared<uint32_t>(2*lits.size(), queue); 
-  d_data.sh_idxs = sycl::malloc_shared<uint32_t>(2*indices.size(), queue); 
+
+  inprocess = InprocessCnf(
+                lits.size(), 
+                indices.size(),
+                &sycl_q,
+                this);
+
+  /*
+  d_data.sh_cnf = sycl::malloc_device<uint32_t>(2*lits.size(), sycl_q); 
+  d_data.sh_idxs = sycl::malloc_device<uint32_t>(2*indices.size(), sycl_q); 
   assert(d_data.sh_cnf); 
   assert(d_data.sh_idxs); 
 
-  queue.memcpy(d_data.sh_cnf, lits.data(), sizeof(uint32_t)*lits.size());
-  queue.memcpy(d_data.sh_idxs, indices.data(), sizeof(uint32_t)*indices.size());
+  sycl_q.memcpy(d_data.sh_cnf, lits.data(), sizeof(uint32_t)*lits.size());
+  sycl_q.memcpy(d_data.sh_idxs, indices.data(), sizeof(uint32_t)*indices.size());
+  */
+
+}
+
+InprocessCnf::InprocessCnf(
+    int n_lits, 
+    int n_indices, 
+    sycl::queue* q,
+    Solver *s) :
+  _q(q),
+  _s(s)
+{
+
+  alloc();
+
+}
+
+void InprocessCnf::alloc() {
+
   
-
-  queue.parallel_for(sycl::range<1>(lits.size()), [=](sycl::id<1> i) {
-    d_data.sh_cnf[i] *= 100; 
-  }).wait();
-
 }
 
 

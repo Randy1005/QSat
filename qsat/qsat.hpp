@@ -18,13 +18,12 @@
 namespace qsat {
 
 class Solver;
-struct SyclMM;
 struct DeviceData;
 struct Clause;
 struct Literal;
 struct ClauseInfo;
 struct VarInfo;
-
+class InprocessCnf;
 
 // @brief shared clause info
 // state: ORIGINAL, LEARNT, DELETED
@@ -250,6 +249,33 @@ struct Watcher {
 	int cref;
 	Literal blocker;
 };
+
+
+/**
+ * TEST: writing sycl kernel
+ */
+class InprocessCnf {
+public:
+  InprocessCnf() = default;
+  InprocessCnf(
+    int n_lits, 
+    int n_indices, 
+    sycl::queue* q,
+    Solver *s
+  );
+  void alloc(); 
+
+private:
+  int n_lits;
+  int n_indices;
+  DeviceData* _d_data;
+  sycl::queue* _q;
+  Solver* _s;
+};
+
+
+
+
 
 
 /**
@@ -481,6 +507,17 @@ public:
    */
   void sycl_check_subsumptions();
 
+  /**
+   * @brief initialize device database
+   *  initialize database informations:
+   *  1. shared cnf formula
+   *  2. shared clause indices
+   */
+  void init_device_db();
+
+
+
+
 	/**
 	 * intel task file transpiling
 	 */
@@ -528,10 +565,11 @@ public:
   // for symmetry detection and breaking
   BID::BreakID breakid;
 
-  // device data pointer 
-  DeviceData* dev_data;
-  
-  
+
+  sycl::queue sycl_q;
+
+  InprocessCnf inprocess;
+
 private:
 
   /**
@@ -846,7 +884,8 @@ struct DeviceData {
   // literals stored in shared space
   // between host and device
   uint32_t* sh_cnf; 
-    
+
+
   // @brief shared clause indices
   // indices to record clause c starts
   // on nth literal
@@ -856,29 +895,6 @@ struct DeviceData {
 
 };
 
-
-
-
-struct SyclMM {
-  SyclMM() = default;
-
-  /**
-   * @brief initialize device database
-   *  initialize database informations:
-   *  1. shared cnf formula
-   *  2. shared clause indices
-   */
-  void init_device_db(DeviceData& d_data, Solver& s);
-
-  // @brief sycl task queue
-  sycl::queue queue;
-
-  // @brief task flow object
-  tf::Taskflow tf;
-
-  // @brief taskflow executor
-  tf::Executor executor;
-};
 
 
 
