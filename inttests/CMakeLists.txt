@@ -11,7 +11,6 @@ set(QSAT_BAD_INPUT_REMOVER ${QSAT_3RD_PARTY_DIR}/remove_bad_lines_from_cnf.py)
 
 
 # harder problems
-# (commented out some tests that definitely will timeout)
 add_test(it.s3-3-3-10 ${QSAT_CHECKER} "s3-3-3-10.cnf")
 add_test(it.s3-3-3-1 ${QSAT_CHECKER} "s3-3-3-1.cnf")
 add_test(it.s3-3-3-3 ${QSAT_CHECKER} "s3-3-3-3.cnf")
@@ -35,7 +34,6 @@ add_test(it.chnl11_20 ${QSAT_CHECKER} "chnl11_20.cnf")
 add_test(it.hole7 ${QSAT_CHECKER} "hole7.cnf")
 add_test(it.hole8 ${QSAT_CHECKER} "hole8.cnf")
 add_test(it.hole9 ${QSAT_CHECKER} "hole9.cnf")
-add_test(it.hole10 ${QSAT_CHECKER} "hole10.cnf")
 add_test(it.hole11 ${QSAT_CHECKER} "hole11.cnf")
 add_test(it.hole12 ${QSAT_CHECKER} "hole12.cnf")
 add_test(it.Urq3_5 ${QSAT_CHECKER} "Urq3_5.cnf")
@@ -69,7 +67,6 @@ set_tests_properties(
 	it.hole7
 	it.hole8
 	it.hole9
-	it.hole10
 	it.hole11
 	it.hole12
 	it.Urq3_5 

@@ -81,7 +81,7 @@ Solver::Solver() :
 	restart_inc(1.1),
 
 	enable_reduce_db(true),
-	enable_rnd_pol(true),
+	enable_rnd_pol(false),
 	enable_luby(false),
 	learnt_size_factor(0.333),
 	
@@ -1015,6 +1015,7 @@ void Solver::reset() {
 
 Status Solver::solve() {
   // initialize inprocessor database
+
   init_device_db();
 
  	_model.clear();
@@ -1034,12 +1035,27 @@ Status Solver::solve() {
 			std::pow(restart_inc, curr_restarts);
 
 		_solver_search_status = search(restart_base * restart_first);
-
 		curr_restarts++;
 	}
 
 	if (_solver_search_status == Status::TRUE) {
-		// extend and copy model
+	  // evaluate clauses here to make sure
+    // they are actually SAT
+    for (size_t i = 0; i < num_orig_clauses; i++) {
+      bool sat = false;
+      const auto& ls = _clauses[i].literals;
+      for (const auto& l : ls) {
+        if (value(l) == Status::TRUE) {
+          sat = true;
+          break;
+        }
+      }
+      assert(sat);
+    }
+
+    
+    
+    // extend and copy model
 		_model.resize(num_variables(), Status::UNDEFINED);
 		for (int i = 0; i < num_variables(); i++) {
 			_model[i] = value(i);
@@ -1167,11 +1183,7 @@ void Solver::init_device_db() {
   
   // initialize memory for CNF on device
   assert(num_clauses() != 0);
-  
-  // -----------------------------------------
-  // TODO: first, parallel construct occurrence table on device 
-  // ----------------------------------------
- 
+
 
   // construct literal sequence
   // and clause lookup index list
@@ -1182,7 +1194,7 @@ void Solver::init_device_db() {
   // lit seq =      {0 2 8 1 4 5}
   //                 ^     ^
   // lookup index = {0     3    }    
-  std::vector<uint32_t> lits, indices;
+  std::vector<uint32_t> lits, indices, l2c;
   std::vector<ClauseInfo> cl_infos;
   
   indices.emplace_back(0);
@@ -1197,6 +1209,7 @@ void Solver::init_device_db() {
 
     for (auto l : ls) {
       lits.emplace_back(static_cast<uint32_t>(l.id)); 
+      l2c.emplace_back(static_cast<uint32_t>(i));
     }
 
     if (i >= 1) {
@@ -1206,44 +1219,46 @@ void Solver::init_device_db() {
  
   assert(lits.size() != 0);
   assert(indices.size() != 0);
+  assert(cl_infos.size() != 0);
 
-  inprocess = InprocessCnf(
-                lits.size(), 
-                indices.size(),
-                &sycl_q,
-                this);
+  d_data.d_cnf = sycl::malloc_shared<uint32_t>(2*lits.size(), sycl_q); 
+  d_data.d_l2c = sycl::malloc_shared<uint32_t>(2*lits.size(), sycl_q); 
+  d_data.d_idxs = sycl::malloc_shared<uint32_t>(2*indices.size(), sycl_q); 
+  d_data.d_cl_infos = sycl::malloc_shared<ClauseInfo>(2*cl_infos.size(), sycl_q);
+  assert(d_data.d_cnf); 
+  assert(d_data.d_idxs);
+  assert(d_data.d_cl_infos);
 
-  /*
-  d_data.sh_cnf = sycl::malloc_device<uint32_t>(2*lits.size(), sycl_q); 
-  d_data.sh_idxs = sycl::malloc_device<uint32_t>(2*indices.size(), sycl_q); 
-  assert(d_data.sh_cnf); 
-  assert(d_data.sh_idxs); 
+  sycl_q.memcpy(d_data.d_cnf, lits.data(), sizeof(uint32_t)*lits.size());
+  sycl_q.memcpy(d_data.d_l2c, l2c.data(), sizeof(uint32_t)*l2c.size());
+  sycl_q.memcpy(d_data.d_idxs, 
+                indices.data(), 
+                sizeof(uint32_t)*indices.size());
+  sycl_q.memcpy(d_data.d_cl_infos, 
+                cl_infos.data(), 
+                sizeof(ClauseInfo)*cl_infos.size());
 
-  sycl_q.memcpy(d_data.sh_cnf, lits.data(), sizeof(uint32_t)*lits.size());
-  sycl_q.memcpy(d_data.sh_idxs, indices.data(), sizeof(uint32_t)*indices.size());
-  */
-
-}
-
-InprocessCnf::InprocessCnf(
-    int n_lits, 
-    int n_indices, 
-    sycl::queue* q,
-    Solver *s) :
-  _q(q),
-  _s(s)
-{
-
-  alloc();
-
-}
-
-void InprocessCnf::alloc() {
 
   
+  // -----------------------------------------
+  // TODO: parallel construct occurrence table on device 
+  // ----------------------------------------
+  //
+  // each literal gets a fix slot of 2 * n_clauses
+  // to store their occurences
+  d_data.d_occur_tab = 
+    sycl::malloc_shared<uint32_t>(2*num_clauses()*2*num_variables(), sycl_q);
+  d_data.d_occurs = sycl::malloc_shared<uint32_t>(2*num_variables(), sycl_q);
+
+
+  uint32_t* p_occur_tab = d_data.d_occur_tab;
+  sycl_q.parallel_for(sycl::range<1>(2*lits.size()),
+    [=] (sycl::id<1> i) {
+    }  
+  );      
+
+
 }
-
-
 
 
 

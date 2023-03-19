@@ -252,26 +252,52 @@ struct Watcher {
 
 
 /**
- * TEST: writing sycl kernel
+ * @brief Device Data
+ * Data storage for device
  */
-class InprocessCnf {
-public:
-  InprocessCnf() = default;
-  InprocessCnf(
-    int n_lits, 
-    int n_indices, 
-    sycl::queue* q,
-    Solver *s
-  );
-  void alloc(); 
+struct DeviceData {
+  
+  /**
+   * @brief device cnf
+   */
+  uint32_t* d_cnf; 
 
-private:
-  int n_lits;
-  int n_indices;
-  DeviceData* _d_data;
-  sycl::queue* _q;
-  Solver* _s;
+
+  /**
+   * @brief device clause indices
+   */
+  uint32_t* d_idxs;
+
+  
+  /**
+   * @brief direct literal to clause map
+   *
+   * e.g.
+   * clauses: {0, 5, 3} {1, 2, 4, 8}
+   * l2c:      0  0  0   1  1  1  1
+   */
+  uint32_t* d_l2c;
+
+  
+
+  ClauseInfo* d_cl_infos;
+
+  /**
+   * @brief device occurence table
+   *  linear array to 
+   *  represent the occurence table
+   *  (a fixed N slots for each literal)
+   */
+  uint32_t* d_occur_tab;
+
+  /**
+   * @brief device occurence count
+   */
+  // TODO: this needs to be a device atomic
+  uint32_t* d_occurs;
 };
+
+
 
 
 
@@ -567,8 +593,7 @@ public:
 
 
   sycl::queue sycl_q;
-
-  InprocessCnf inprocess;
+  DeviceData d_data;
 
 private:
 
@@ -779,7 +804,7 @@ inline Status Solver::value(const Literal& p) const {
 		return Status::UNDEFINED;
 	}
 	else {
-		return static_cast<int>(_assigns[var(p)]) ^ sign(p) ? 
+		return (static_cast<int>(_assigns[var(p)]) ^ sign(p)) ? 
 			Status::TRUE : 
 			Status::FALSE;
 	}
@@ -873,30 +898,6 @@ inline bool Solver::is_removed(int cref) const {
 inline bool Solver::watcher_deleted(Watcher& w) const {
 	return _clauses[w.cref].mark == 1;
 }
-
-/**
- * @brief Device Data
- * Data storage for device
- */
-struct DeviceData {
-
-  // @brief shared cnf
-  // literals stored in shared space
-  // between host and device
-  uint32_t* sh_cnf; 
-
-
-  // @brief shared clause indices
-  // indices to record clause c starts
-  // on nth literal
-  //
-  // indices[c] -> n
-  uint32_t* sh_idxs;
-
-};
-
-
-
 
 
 
