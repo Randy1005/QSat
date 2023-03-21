@@ -287,14 +287,37 @@ struct DeviceData {
    *  linear array to 
    *  represent the occurence table
    *  (a fixed N slots for each literal)
+   * -1 denotes empty occurrence slot
    */
-  uint32_t* d_occur_tab;
+  int* d_occur_tab;
 
   /**
-   * @brief device occurence count
+   * @brief device occurence histogram
+   * e.g.
+   * cnf = {0, 2, 3} {1, 2, 3}
+   * h[0] = 1
+   * h[1] = 1
+   * h[2] = 2
+   * h[3] = 2
    */
-  // TODO: this needs to be a device atomic
-  uint32_t* d_occurs;
+  uint32_t* d_hist;
+
+
+  /**
+   * @brief device variable scores
+   * scores indicate that how many
+   * resolvents would be generated 
+   * if we eliminate a variable
+   */
+  uint32_t* d_scores;
+
+  /**
+   * @brief device authorized candidates
+   * variables that meets the following condition:
+   *  1<=h[x]<=cutoff OR 1<=h[x']<=cutoff
+   * 
+   */
+  uint32_t* d_candidates;
 };
 
 

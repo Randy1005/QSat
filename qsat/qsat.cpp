@@ -1180,7 +1180,12 @@ bool Solver::transpile_task_to_dimacs(const std::string& task_file_name) {
 
 
 void Solver::init_device_db() {
-  
+
+  // set up device
+  sycl_q = sycl::queue(sycl::gpu_selector_v);
+  std::cout << "selected device: " <<
+    sycl_q.get_device().get_info<sycl::info::device::name>() << '\n';
+
   // initialize memory for CNF on device
   assert(num_clauses() != 0);
 
@@ -1196,7 +1201,10 @@ void Solver::init_device_db() {
   // lookup index = {0     3    }    
   std::vector<uint32_t> lits, indices, l2c;
   std::vector<ClauseInfo> cl_infos;
-  
+ 
+
+
+  auto beg = std::chrono::steady_clock::now();
   indices.emplace_back(0);
   for (size_t i = 0; i < num_clauses(); i++) {
     const auto& ls = _clauses[i].literals;
@@ -1217,6 +1225,14 @@ void Solver::init_device_db() {
     }
   }
  
+  auto end = std::chrono::steady_clock::now();
+  auto litseq_build_time = 
+    std::chrono::duration_cast<std::chrono::milliseconds>(
+      end - beg
+    ).count();
+  std::cout << 
+    "litseq/clause lookup table build runtime=" << litseq_build_time << "ms\n";
+
   assert(lits.size() != 0);
   assert(indices.size() != 0);
   assert(cl_infos.size() != 0);
@@ -1237,27 +1253,144 @@ void Solver::init_device_db() {
   sycl_q.memcpy(d_data.d_cl_infos, 
                 cl_infos.data(), 
                 sizeof(ClauseInfo)*cl_infos.size());
-
-
+  
   
   // -----------------------------------------
-  // TODO: parallel construct occurrence table on device 
-  // ----------------------------------------
-  //
-  // each literal gets a fix slot of 2 * n_clauses
+  // parallel construct histogram on device 
+  // -----------------------------------------
+  auto n_lits = 2*num_variables();
+  auto lit_seq_sz = lits.size();
+
+  d_data.d_hist = 
+    sycl::malloc_shared<uint32_t>(n_lits, sycl_q);
+   
+  sycl_q.memset(d_data.d_hist, 0, sizeof(uint32_t)*n_lits);
+  
+  
+  auto* p_lits = d_data.d_cnf;
+  auto* p_hist = d_data.d_hist;
+  sycl_q.submit([&](auto& cgh){
+    cgh.parallel_for(sycl::range<1>(lit_seq_sz),
+      [=] (sycl::id<1> i) {
+        auto lit = p_lits[i];
+        sycl::atomic_ref<uint32_t,
+                   sycl::memory_order::relaxed,
+                   sycl::memory_scope::device,
+                   sycl::access::address_space::global_space
+                  > atom_hist(p_hist[lit]);
+        atom_hist++;
+      }  
+    ); 
+
+  }).wait();
+
+  //for (int i = 0; i < n_lits; i++) {
+  //  std::cout << "h[" << i << "]=" << d_data.d_hist[i] << '\n';
+  //} 
+
+  // -----------------------------------------
+  // parallel calculate scores on device
+  // scores are indicative of how many resolvents
+  // would be generated if we eliminate var x
+  // -----------------------------------------
+  
+  // allocate memory for scores (size of n_vars)
+  d_data.d_scores = 
+    sycl::malloc_shared<uint32_t>(num_variables(), sycl_q);
+  d_data.d_candidates = 
+    sycl::malloc_shared<uint32_t>(num_variables(), sycl_q);
+  
+  auto* p_cands = d_data.d_candidates;
+  auto* p_scores = d_data.d_scores;
+  sycl_q.submit([&](auto& cgh){
+    cgh.parallel_for(sycl::range<1>(num_variables()),
+      [=] (sycl::id<1> i) {
+        uint32_t var = i;
+        p_cands[i] = var;
+        
+        // calculate v, v'
+        uint32_t l = 2*var;
+        uint32_t l_bar = 2*var+1;
+
+        if (p_hist[l] == 0 || p_hist[l_bar] == 0) {
+          p_scores[var] = sycl::max(p_hist[l], p_hist[l_bar]);  
+        }
+        else {
+          p_scores[var] = p_hist[l] * p_hist[l_bar];
+        }
+      }  
+    ); 
+  }).wait();
+
+
+
+  // TODO: sort candidates in ascending order w.r.t scores
+  
+  // -----------------------------------------
+  // parallel construct occurrence table on device 
+  // -----------------------------------------
+  
+  // each literal gets fixed N slots
   // to store their occurences
+  // now N = 1000
+  size_t slots = 1000;
+  auto occtab_size = slots*2*num_variables();
+  
+  
   d_data.d_occur_tab = 
-    sycl::malloc_shared<uint32_t>(2*num_clauses()*2*num_variables(), sycl_q);
-  d_data.d_occurs = sycl::malloc_shared<uint32_t>(2*num_variables(), sycl_q);
+    sycl::malloc_shared<int>(occtab_size, sycl_q);
+ 
+  sycl_q.memset(d_data.d_occur_tab, -1, sizeof(int)*occtab_size).wait();
+
+  auto* p_occur_tab = d_data.d_occur_tab;
+  auto* p_l2c = d_data.d_l2c;
+  size_t stride = slots; 
 
 
-  uint32_t* p_occur_tab = d_data.d_occur_tab;
-  sycl_q.parallel_for(sycl::range<1>(2*lits.size()),
-    [=] (sycl::id<1> i) {
-    }  
-  );      
+  std::cout << "num lits=" << n_lits << '\n'; 
+
+  beg = std::chrono::steady_clock::now();
+  sycl_q.submit([&](auto& cgh){
+    // sycl::stream out(8192, 1024, cgh);    
+    cgh.parallel_for(sycl::range<1>(n_lits),
+      [=] (sycl::id<1> i) {
+        auto start = i * stride;
+        size_t occ = 0;
+        for (int j = 0; j < lit_seq_sz; j++) {
+          auto l = p_lits[j];
+          if (l == i) {
+            p_occur_tab[start+occ] = p_l2c[j];
+            if (occ < slots) {
+              // only record the available slots
+              occ++;
+            }
+            else {
+              // skip recording occurrence
+              break;
+            }
+          }
+        } 
+      
+      }  
+    ); 
+
+  }).wait();
 
 
+  end = std::chrono::steady_clock::now();
+  auto occtab_build_time = 
+    std::chrono::duration_cast<std::chrono::milliseconds>(
+      end - beg
+    ).count();
+
+  std::cout << "occtab build runtime=" << occtab_build_time << "ms\n";
+
+  //for (int i = 0; i < occtab_size; i++) {
+  //  if (i % 100 == 0) {
+  //    std::cout << "\nocc[" << (i/100) << "]=";
+  //  } 
+  //  std::cout << d_data.d_occur_tab[i] << ' ';
+  //}
 }
 
 
