@@ -98,6 +98,10 @@ Solver::Solver() :
   
 }
 
+Solver::~Solver() {
+  cleanup_device_db();
+}
+
 void Solver::read_dimacs(const std::string& input_file) {
   std::ifstream ifs;
   ifs.open(input_file);
@@ -607,7 +611,22 @@ void Solver::analyze(int confl_cref,
 }
 
 
+
+
 void Solver::sycl_check_subsumptions() {
+  
+
+  // TODO: implement a 2d grid here
+  sycl_q.submit([&](auto& cgh){
+    cgh.parallel_for(sycl::range<1>(1000),
+      [=] (sycl::id<1> i) {
+      }  
+    ); 
+
+  }).wait();
+
+
+
 }
 
 
@@ -1015,8 +1034,8 @@ void Solver::reset() {
 
 Status Solver::solve() {
   // initialize inprocessor database
-
-  init_device_db();
+  init_device_db(500);
+  
 
  	_model.clear();
 
@@ -1179,7 +1198,7 @@ bool Solver::transpile_task_to_dimacs(const std::string& task_file_name) {
 */
 
 
-void Solver::init_device_db() {
+void Solver::init_device_db(int cutoff) {
 
   // set up device
   sycl_q = sycl::queue(sycl::gpu_selector_v);
@@ -1202,8 +1221,6 @@ void Solver::init_device_db() {
   std::vector<uint32_t> lits, indices, l2c;
   std::vector<ClauseInfo> cl_infos;
  
-
-
   auto beg = std::chrono::steady_clock::now();
   indices.emplace_back(0);
   for (size_t i = 0; i < num_clauses(); i++) {
@@ -1253,7 +1270,8 @@ void Solver::init_device_db() {
   sycl_q.memcpy(d_data.d_cl_infos, 
                 cl_infos.data(), 
                 sizeof(ClauseInfo)*cl_infos.size());
-  
+
+
   
   // -----------------------------------------
   // parallel construct histogram on device 
@@ -1324,16 +1342,44 @@ void Solver::init_device_db() {
 
 
 
-  // TODO: sort candidates in ascending order w.r.t scores
+  // sort candidates in ascending order w.r.t scores
+  beg = std::chrono::steady_clock::now(); 
+  std::sort(d_data.d_candidates, 
+      d_data.d_candidates + num_variables(), 
+      [this](uint32_t a, uint32_t b) {
+    return d_data.d_scores[a] < d_data.d_scores[b]; 
+  }); 
+
+
+  //thrust::sort_by_key(
+  //    d_data.d_candidates, 
+  //    d_data.d_candidates+num_variables(),
+  //    d_data.d_scores); 
+
+
+  end = std::chrono::steady_clock::now(); 
+  auto sort_time = 
+    std::chrono::duration_cast<std::chrono::milliseconds>(
+      end - beg
+    ).count();
+  std::cout << 
+    "candidate sort runtime=" << sort_time << "ms\n";
+
   
+
+
+  // prune any candidates that has a score larger than
+  // the user-configured cutoff value
+  // NOTE: this is probably not necessary?
+
   // -----------------------------------------
   // parallel construct occurrence table on device 
   // -----------------------------------------
   
-  // each literal gets fixed N slots
+  // each literal gets fixed 2*N slots
   // to store their occurences
-  // now N = 1000
-  size_t slots = 1000;
+  // now N = cutoff
+  size_t slots = 2*cutoff;
   auto occtab_size = slots*2*num_variables();
   
   
@@ -1347,14 +1393,12 @@ void Solver::init_device_db() {
   size_t stride = slots; 
 
 
-  std::cout << "num lits=" << n_lits << '\n'; 
-
   beg = std::chrono::steady_clock::now();
   sycl_q.submit([&](auto& cgh){
     // sycl::stream out(8192, 1024, cgh);    
     cgh.parallel_for(sycl::range<1>(n_lits),
       [=] (sycl::id<1> i) {
-        auto start = i * stride;
+        auto start = i*stride;
         size_t occ = 0;
         for (int j = 0; j < lit_seq_sz; j++) {
           auto l = p_lits[j];
@@ -1393,6 +1437,17 @@ void Solver::init_device_db() {
   //}
 }
 
+
+void Solver::cleanup_device_db() {
+  sycl::free(d_data.d_cnf, sycl_q);
+  sycl::free(d_data.d_idxs, sycl_q);
+  sycl::free(d_data.d_l2c, sycl_q);
+  sycl::free(d_data.d_cl_infos, sycl_q);
+  sycl::free(d_data.d_occur_tab, sycl_q);
+  sycl::free(d_data.d_hist, sycl_q);
+  sycl::free(d_data.d_scores, sycl_q);
+  sycl::free(d_data.d_candidates, sycl_q);
+}
 
 
 

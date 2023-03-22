@@ -14,8 +14,9 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
 target_link_libraries(qsat PUBLIC Threads::Threads)
-set_property(TARGET qsat PROPERTY CXX_STANDARD 17)
-target_compile_options(qsat INTERFACE -Wall -Wextra -Wfatal-errors)
+target_link_libraries(qsat PUBLIC Thrust)
+
+
 
 # find the break id package
 find_package(breakid REQUIRED)
@@ -28,3 +29,8 @@ if (breakid_FOUND)
   )
   message(STATUS "BREAKID_INCLUDE_DIRS=${BREAKID_INCLUDE_DIRS}")
 endif()
+
+set_property(TARGET qsat PROPERTY CXX_STANDARD 17)
+target_compile_options(qsat INTERFACE -Wall -Wextra -Wfatal-errors)
+
+

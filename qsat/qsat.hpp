@@ -8,10 +8,16 @@
 #include <filesystem>
 #include <random>
 #include <cmath>
+#include <map>
 #include "heap.hpp"
 #include <breakid.hpp>
 #include "taskflow/taskflow.hpp"
 #include "taskflow/sycl/syclflow.hpp"
+#include <thrust/host_vector.h>
+#include <thrust/device_vector.h>
+#include <thrust/generate.h>
+#include <thrust/sort.h>
+#include <thrust/copy.h>
 
 // #include "intel_task_grammar.hpp"
 
@@ -23,7 +29,6 @@ struct Clause;
 struct Literal;
 struct ClauseInfo;
 struct VarInfo;
-class InprocessCnf;
 
 // @brief shared clause info
 // state: ORIGINAL, LEARNT, DELETED
@@ -338,6 +343,8 @@ public:
   */
   Solver();
 
+  ~Solver();
+
   /**
   @brief reads in dimacs cnf file, and store the literals and clauses
   @param input_file the dimacs cnf file name
@@ -557,13 +564,39 @@ public:
   void sycl_check_subsumptions();
 
   /**
+   * @brief checks if a clause B is a subset of
+   * clause A, i.e. if B subsumes A
+   *
+   * @param clause A as an uint32 array
+   * @param size of A (num_elements)
+   * @param clause B
+   * @param size of B
+   *
+   */
+  bool is_subset(
+      uint32_t* a, 
+      uint32_t sz_a,
+      uint32_t* b,
+      uint32_t sz_b);
+
+
+  /**
    * @brief initialize device database
    *  initialize database informations:
    *  1. shared cnf formula
    *  2. shared clause indices
+   *
+   * @param cutoff is a user-configurable value
+   * to prune any candidate that would generate 
+   * more resolvents than this value
    */
-  void init_device_db();
+  void init_device_db(int cutoff);
 
+
+  /**
+   * @brief cleanup device memory
+   */
+  void cleanup_device_db();
 
 
 
@@ -795,12 +828,6 @@ private:
 	std::uniform_real_distribution<double> _uni_real_dist;
 
 
-
-	/**
-	 * some temp data structures to prevent
-	 * allocation overhead
-	 */
-	
 	// seen 
 	// a list which records whether a variable is examined
 	// (may be used in multiple methods)
@@ -922,6 +949,39 @@ inline bool Solver::watcher_deleted(Watcher& w) const {
 	return _clauses[w.cref].mark == 1;
 }
 
+inline bool Solver::is_subset(
+    uint32_t* cl_a, 
+    uint32_t sz_a,  
+    uint32_t* cl_b,
+    uint32_t sz_b) {
+  // use the 2-pointer approach
+  // prerequisite: the arrays being tested
+  // has to be sorted
+
+  uint32_t i = 0, j = 0;
+  while (i < sz_a && j < sz_b) {
+    if (cl_a[i] < cl_b[j]) {
+      i++;
+    }
+    else if (cl_a[i] == cl_b[j]) {
+      i++;
+      j++;
+    }
+    else if (cl_a[i] > cl_b[j]) {
+      return false;
+    }
+  }
+
+  if (j < sz_b) {
+    return false;
+  }
+  else {
+    return true;
+  }
+
+
+
+}
 
 
 }  // end of namespace --------------------------------------------------------

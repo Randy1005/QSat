@@ -2,7 +2,6 @@ cmake_minimum_required(VERSION 3.26.0)
 
 project(QSat VERSION 1.0)
 
-# find_package(IntelDPCPP REQUIRED)
 
 # set everything up for c++ 17 features
 set(CMAKE_CXX_STANDARD 17)
@@ -10,7 +9,6 @@ set(CMAKE_CXX_STANDARD 17)
 # set default compiler to be intel dpc++
 set(CMAKE_C_COMPILER $ENV{DPCPP_COMPILER})
 set(CMAKE_CXX_COMPILER $ENV{DPCPP_COMPILER})
-# set(CMAKE_CXX_FLAGS "-fsycl -fsycl-targets=spir64_x86_64,nvptx64-nvidia-cuda")
 set(CMAKE_CXX_FLAGS "-fsycl -fsycl-targets=nvptx64-nvidia-cuda -fsycl-unnamed-lambda")
 
 # test that filesystem header actually is there and works
@@ -25,6 +23,9 @@ set(CMAKE_CXX_FLAGS "-fsycl -fsycl-targets=nvptx64-nvidia-cuda -fsycl-unnamed-la
 
 # find sycl library
 find_library(SYCL_LIB NAMES sycl libsycl HINTS $ENV{DPCPP_ROOT}/llvm/build/lib/ REQUIRED)
+
+find_package(Thrust REQUIRED CONFIG)
+thrust_create_target(Thrust)
 
 
 message(STATUS "SYCL lib path=" ${SYCL_LIB})
@@ -162,8 +163,5 @@ add_subdirectory(${QSAT_BENCHMARK_DIR}/ssa)
 
 # IBM bounded model checking benchmarks
 add_subdirectory(${QSAT_BENCHMARK_DIR}/ibm-bmc)
-
-
-
 
 

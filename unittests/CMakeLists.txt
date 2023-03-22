@@ -9,6 +9,7 @@ list(APPEND QSAT_UNITTESTS
 	verify_watches
 	verify_detach_clauses
   verify_signature
+  verify_subsume
 )
 
 foreach(unittest IN LISTS QSAT_UNITTESTS)
