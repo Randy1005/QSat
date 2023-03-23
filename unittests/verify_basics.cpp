@@ -33,6 +33,7 @@ TEST_CASE("Literal Operators + Evaluation" * doctest::timeout(300)) {
   qsat::Literal a(-1), b(2);
   qsat::Solver s;
 
+
   s.add_clause({a, b});
 
   // value check: a, b are evaluated to UNDEF now

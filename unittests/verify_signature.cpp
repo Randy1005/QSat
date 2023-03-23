@@ -29,7 +29,10 @@ TEST_CASE("Clause Signatures" * doctest::timeout(300)) {
   
   REQUIRE(cs[1].signature != 0);
   REQUIRE(cs[1].signature == 7);
-  
+
+
+  auto hash_check = (cs[0].signature & (~cs[1].signature));
+  REQUIRE(hash_check == 0);
 
   // clause 2 has lits: 128, 70, 56 (vars 64, 35, 28)
   // sig(64) = 64 & 31 = 0
@@ -40,6 +43,12 @@ TEST_CASE("Clause Signatures" * doctest::timeout(300)) {
   uint32_t sig2 = (1 | 1<<3 | 1<<28); 
   REQUIRE(cs[2].signature != 0);
   REQUIRE(cs[2].signature == sig2);
+
+  hash_check = (cs[0].signature & (~cs[2].signature));
+  REQUIRE(hash_check != 0);
+
+
+
 }
 
 

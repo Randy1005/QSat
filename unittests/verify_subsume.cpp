@@ -16,5 +16,11 @@ TEST_CASE("Subset Check" * doctest::timeout(300)) {
   uint32_t c[] = {0, 1, 3, 5};
   uint32_t d[] = {0, 1, 2, 5, 7};
   REQUIRE(s.is_subset(d, 5, c, 4) == false);
+  
+
+  REQUIRE(s.is_subset(d, 5, c, 2) == true);
+  REQUIRE(s.is_subset(d, 5, c, 3) == false);
+
+
 }
 

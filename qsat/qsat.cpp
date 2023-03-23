@@ -77,7 +77,7 @@ Solver::Solver() :
 	var_decay(0.95),
 	cla_decay(0.999),
 	phase_saving(0),
-	restart_first(100), // set to -1 to disable
+	restart_first(-1), // set to -1 to disable
 	restart_inc(1.1),
 
 	enable_reduce_db(true),
@@ -99,7 +99,7 @@ Solver::Solver() :
 }
 
 Solver::~Solver() {
-  cleanup_device_db();
+
 }
 
 void Solver::read_dimacs(const std::string& input_file) {
@@ -613,20 +613,78 @@ void Solver::analyze(int confl_cref,
 
 
 
-void Solver::sycl_check_subsumptions() {
-  
+void Solver::sycl_check_subsumptions(uint32_t lit) {
+  std::cout << "SUB check for OT[" << lit << "]\n";
+  auto stride = occ_list_slots; 
+  auto* p_occtab = d_data.d_occur_tab;
+  auto* p_idxs = d_data.d_idxs;
+  auto* p_cnf = d_data.d_cnf;
+  auto* p_cl_infos = d_data.d_cl_infos;
+  auto l = lit;
+  auto* s = this;
 
-  // TODO: implement a 2d grid here
+
+  auto beg = std::chrono::steady_clock::now();
   sycl_q.submit([&](auto& cgh){
-    cgh.parallel_for(sycl::range<1>(1000),
-      [=] (sycl::id<1> i) {
+    sycl::stream out(8192, 1024, cgh);    
+    cgh.parallel_for(sycl::range<2>(stride, stride),
+      [=] (sycl::id<2> idx) {
+        auto tx = idx[0];  
+        auto ty = idx[1];  
+        
+        // get clause indices
+        auto ca_idx = p_occtab[l*stride+tx];
+        auto cb_idx = p_occtab[l*stride+ty];
+          
+
+        if (ca_idx == -1 || cb_idx == -1 || ca_idx == cb_idx) {
+          return;
+        }
+
+
+        // get clause start/end idx in
+        // the universal literal sequence (d_cnf)
+        auto ca_beg = p_idxs[ca_idx];
+        auto ca_end = p_idxs[ca_idx+1];
+        auto cb_beg = p_idxs[cb_idx];
+        auto cb_end = p_idxs[cb_idx+1];
+  
+        
+        // get size of clause a and b
+        auto sz_a = ca_end - ca_beg;
+        auto sz_b = cb_end - cb_beg;
+
+        // get pointer to start of clause
+        // a and b
+        auto* p2ca = &p_cnf[ca_beg];
+        auto* p2cb = &p_cnf[cb_beg];
+        
+        // get clause signatures
+        auto sig_a = p_cl_infos[ca_idx].sig;
+        auto sig_b = p_cl_infos[cb_idx].sig;
+      
+
+        uint32_t hash_check = (sig_a & (~sig_b));
+
+        // subset test
+        if (sz_a < sz_b && hash_check == 0)   {
+          if (s->is_subset(p2cb, sz_b, p2ca, sz_a)) {
+            // mark the state of this clause as deleted
+            p_cl_infos[cb_idx].state = 2;  
+          }
+        }
       }  
     ); 
 
   }).wait();
 
 
+  auto end = std::chrono::steady_clock::now();
 
+  auto time = std::chrono::duration_cast<std::chrono::microseconds>(
+    end-beg
+  ).count();
+  std::cout << "SUB check runtime=" << time << "us\n";
 }
 
 
@@ -1036,8 +1094,7 @@ Status Solver::solve() {
   // initialize inprocessor database
   init_device_db(500);
   
-
- 	_model.clear();
+  _model.clear();
 
 	// initialize max learnt clause database size
 	max_learnts = num_orig_clauses * learnt_size_factor;
@@ -1224,8 +1281,13 @@ void Solver::init_device_db(int cutoff) {
   auto beg = std::chrono::steady_clock::now();
   indices.emplace_back(0);
   for (size_t i = 0; i < num_clauses(); i++) {
-    const auto& ls = _clauses[i].literals;
-    
+    auto ls = _clauses[i].literals;
+    std::sort(ls.begin(), ls.end(), 
+        [](const Literal& a, const Literal& b) {
+          return a.id < b.id;    
+        }
+    );
+
     // calculate signature for clause
     _clauses[i].calc_signature();
     cl_infos.emplace_back(0, 0, 0, 0, 
@@ -1237,9 +1299,7 @@ void Solver::init_device_db(int cutoff) {
       l2c.emplace_back(static_cast<uint32_t>(i));
     }
 
-    if (i >= 1) {
-      indices.emplace_back(ls.size()+indices[i-1]);
-    }
+    indices.emplace_back(ls.size()+indices[i]);
   }
  
   auto end = std::chrono::steady_clock::now();
@@ -1250,9 +1310,12 @@ void Solver::init_device_db(int cutoff) {
   std::cout << 
     "litseq/clause lookup table build runtime=" << litseq_build_time << "ms\n";
 
+
   assert(lits.size() != 0);
   assert(indices.size() != 0);
   assert(cl_infos.size() != 0);
+
+  idxs_sz = indices.size();
 
   d_data.d_cnf = sycl::malloc_shared<uint32_t>(2*lits.size(), sycl_q); 
   d_data.d_l2c = sycl::malloc_shared<uint32_t>(2*lits.size(), sycl_q); 
@@ -1277,13 +1340,12 @@ void Solver::init_device_db(int cutoff) {
   // parallel construct histogram on device 
   // -----------------------------------------
   auto n_lits = 2*num_variables();
-  auto lit_seq_sz = lits.size();
+  lit_seq_sz = lits.size();
 
   d_data.d_hist = 
     sycl::malloc_shared<uint32_t>(n_lits, sycl_q);
    
   sycl_q.memset(d_data.d_hist, 0, sizeof(uint32_t)*n_lits);
-  
   
   auto* p_lits = d_data.d_cnf;
   auto* p_hist = d_data.d_hist;
@@ -1365,7 +1427,6 @@ void Solver::init_device_db(int cutoff) {
   std::cout << 
     "candidate sort runtime=" << sort_time << "ms\n";
 
-  
 
 
   // prune any candidates that has a score larger than
@@ -1379,8 +1440,8 @@ void Solver::init_device_db(int cutoff) {
   // each literal gets fixed 2*N slots
   // to store their occurences
   // now N = cutoff
-  size_t slots = 2*cutoff;
-  auto occtab_size = slots*2*num_variables();
+  occ_list_slots = 2*cutoff;
+  auto occtab_size = occ_list_slots*2*num_variables();
   
   
   d_data.d_occur_tab = 
@@ -1390,21 +1451,20 @@ void Solver::init_device_db(int cutoff) {
 
   auto* p_occur_tab = d_data.d_occur_tab;
   auto* p_l2c = d_data.d_l2c;
-  size_t stride = slots; 
-
-
+  auto lseq_sz = lit_seq_sz;
   beg = std::chrono::steady_clock::now();
   sycl_q.submit([&](auto& cgh){
     // sycl::stream out(8192, 1024, cgh);    
+    auto stride = occ_list_slots;
     cgh.parallel_for(sycl::range<1>(n_lits),
       [=] (sycl::id<1> i) {
         auto start = i*stride;
         size_t occ = 0;
-        for (int j = 0; j < lit_seq_sz; j++) {
+        for (int j = 0; j < lseq_sz; j++) {
           auto l = p_lits[j];
           if (l == i) {
             p_occur_tab[start+occ] = p_l2c[j];
-            if (occ < slots) {
+            if (occ < stride) {
               // only record the available slots
               occ++;
             }
@@ -1439,14 +1499,7 @@ void Solver::init_device_db(int cutoff) {
 
 
 void Solver::cleanup_device_db() {
-  sycl::free(d_data.d_cnf, sycl_q);
-  sycl::free(d_data.d_idxs, sycl_q);
-  sycl::free(d_data.d_l2c, sycl_q);
-  sycl::free(d_data.d_cl_infos, sycl_q);
-  sycl::free(d_data.d_occur_tab, sycl_q);
-  sycl::free(d_data.d_hist, sycl_q);
-  sycl::free(d_data.d_scores, sycl_q);
-  sycl::free(d_data.d_candidates, sycl_q);
+  
 }
 
 

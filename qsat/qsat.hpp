@@ -31,7 +31,7 @@ struct ClauseInfo;
 struct VarInfo;
 
 // @brief shared clause info
-// state: ORIGINAL, LEARNT, DELETED
+// state: ORIGINAL(0), LEARNT(1), DELETED(2)
 // added: is resolvent?
 // flag:  contributes to gate extraction?
 // lbd:   literal block distance (look up glucose)
@@ -58,7 +58,7 @@ struct ClauseInfo {
   }
 
   
-
+  
   char state;
   char added, flag;
   char used;
@@ -261,7 +261,9 @@ struct Watcher {
  * Data storage for device
  */
 struct DeviceData {
-  
+
+  DeviceData() = default;
+
   /**
    * @brief device cnf
    */
@@ -557,11 +559,12 @@ public:
 
   /**
    * @brief sycl_check_subsumptions
+   * pick a certain literal, inside its occurence list
    * if a clause A is a subset of clause B
    * clause B can be removed, because A is more
    * restrictive than B regarding satisfiability
    */
-  void sycl_check_subsumptions();
+  void sycl_check_subsumptions(uint32_t lit);
 
   /**
    * @brief checks if a clause B is a subset of
@@ -650,7 +653,9 @@ public:
 
   sycl::queue sycl_q;
   DeviceData d_data;
-
+  uint32_t occ_list_slots;
+  uint32_t idxs_sz;
+  uint32_t lit_seq_sz;
 private:
 
   /**
