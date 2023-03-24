@@ -77,7 +77,7 @@ Solver::Solver() :
 	var_decay(0.95),
 	cla_decay(0.999),
 	phase_saving(0),
-	restart_first(-1), // set to -1 to disable
+	restart_first(100), // set to -1 to disable
 	restart_inc(1.1),
 
 	enable_reduce_db(true),
@@ -400,7 +400,7 @@ Status Solver::search(int nof_conflicts) {
 		int confl_cref = propagate();
     
     if (confl_cref != CREF_UNDEF) {
-			// conflict encountered!
+      // conflict encountered!
 			conflicts++;
 
 			// conflict counter for one search
@@ -413,7 +413,7 @@ Status Solver::search(int nof_conflicts) {
 			}
 			
 			learnt_clause.clear();
-			analyze(confl_cref, learnt_clause, backtrack_level);	
+      analyze(confl_cref, learnt_clause, backtrack_level);	
 			
 			// undo everything until the backtrack level
 			_cancel_until(backtrack_level);
@@ -516,9 +516,8 @@ void Solver::analyze(int confl_cref,
 	int index = _trail.size() - 1;
 
 	do {
-		assert(confl_cref != CREF_UNDEF);
+    assert(confl_cref != CREF_UNDEF);
 		Clause& confl_c = _clauses[confl_cref];
-
 
 		// if this conflict clause is already learnt
 		// i.e. a previously learnt clause causing conflict
@@ -568,7 +567,7 @@ void Solver::analyze(int confl_cref,
 		p = _trail[index + 1];
 		// use the reason clause of the new p as conflict clause
 		confl_cref = reason(var(p));
-		_seen[var(p)] = 0;
+		_seen[var(p)] = false;
 		path_cnt--;
 
 	} while (path_cnt > 0);
@@ -685,6 +684,8 @@ void Solver::sycl_check_subsumptions(uint32_t lit) {
     end-beg
   ).count();
   std::cout << "SUB check runtime=" << time << "us\n";
+
+  
 }
 
 
@@ -836,12 +837,24 @@ Literal Solver::_pick_branch_lit() {
 	// activity-based decision
 	while (next == VAR_UNDEF || value(next) != Status::UNDEFINED) {
 		if (_order_heap.empty()) {
-			next = VAR_UNDEF;
-			break;
+      next = VAR_UNDEF;
+      break;
 		}
 		else {
 			next = _order_heap.remove_max();
-		}
+    }
+    
+
+
+    //if (vq.empty()) {
+    //  next = VAR_UNDEF;
+    //  break;
+    //}
+    //else {
+    //  next = vq.front();
+    //  inq[next] = false;
+    //  vq.pop();
+    //}
 	}
 
 
@@ -889,10 +902,15 @@ void Solver::_cancel_until(int level) {
 			if (phase_saving > 1 || (phase_saving == 1 && u > _trail_lim.back())) {
 			
 			}
-
+      
 			// re-insert variables into heap
 			// they were removed when they were selected for propagtion
 			_insert_var_order(v);
+      
+      //if (!inq[v]) {
+      //  inq[v] = true;
+      //  vq.push(v);
+      //}
 		}
 
 		// point qhead to 'level'
@@ -928,6 +946,11 @@ void Solver::_new_var(int v) {
   
   // insert this var into order heap
   _insert_var_order(v);
+  //inq.resize(num_variables(), false);
+  //if (!inq[v]) { 
+  //  vq.push(v);
+  //  inq[v] = true;
+  //}
 
 	// resize watches
 	watches.resize(2 * num_variables());
@@ -937,6 +960,7 @@ void Solver::_new_var(int v) {
 
 	// resize the seen list
 	_seen.resize(num_variables(), false);
+
 }
 
 void Solver::_smudge_watch(int p) {
@@ -1093,7 +1117,10 @@ void Solver::reset() {
 Status Solver::solve() {
   // initialize inprocessor database
   init_device_db(500);
-  
+ 
+  // TODO: prune authorized candidates w/ cutoff
+
+
   _model.clear();
 
 	// initialize max learnt clause database size
@@ -1102,9 +1129,10 @@ Status Solver::solve() {
 	// TODO: budget can be defined too, conflict budget and propagtion budget
 	
 	int curr_restarts = 0;
+  
 
   while (_solver_search_status == Status::UNDEFINED) {
-		// calculate restart base with luby sequence
+    // calculate restart base with luby sequence
     // or geometric sequence
 		double restart_base = enable_luby ? 
 			_luby(restart_inc, curr_restarts) : 
@@ -1115,7 +1143,8 @@ Status Solver::solve() {
 	}
 
 	if (_solver_search_status == Status::TRUE) {
-	  // evaluate clauses here to make sure
+	  
+    // evaluate clauses here to make sure
     // they are actually SAT
     for (size_t i = 0; i < num_orig_clauses; i++) {
       bool sat = false;
@@ -1129,7 +1158,6 @@ Status Solver::solve() {
       assert(sat);
     }
 
-    
     
     // extend and copy model
 		_model.resize(num_variables(), Status::UNDEFINED);
@@ -1262,6 +1290,18 @@ void Solver::init_device_db(int cutoff) {
   std::cout << "selected device: " <<
     sycl_q.get_device().get_info<sycl::info::device::name>() << '\n';
 
+  auto device = sycl_q.get_device();
+  auto max_work_group_size = device.get_info<sycl::info::device::max_work_group_size>();
+  auto max_work_item_dimensions = device.get_info<sycl::info::device::max_work_item_dimensions>();
+  auto max_work_item_sizes = device.get_info<sycl::info::device::max_work_item_sizes<3>>();
+  auto max_compute_units = device.get_info<sycl::info::device::max_compute_units>();
+  std::cout << "max work group size = " << max_work_group_size << '\n';
+  std::cout << "max work item dimensions = " << max_work_item_dimensions << '\n';
+  std::cout << "max work item size = " << max_work_item_sizes[0] << ' ' << max_work_item_sizes[1]
+    << ' ' << max_work_item_sizes[2] << '\n';
+  std::cout << "max compute units = " << max_compute_units << '\n';
+
+
   // initialize memory for CNF on device
   assert(num_clauses() != 0);
 
@@ -1304,11 +1344,11 @@ void Solver::init_device_db(int cutoff) {
  
   auto end = std::chrono::steady_clock::now();
   auto litseq_build_time = 
-    std::chrono::duration_cast<std::chrono::milliseconds>(
+    std::chrono::duration_cast<std::chrono::microseconds>(
       end - beg
     ).count();
   std::cout << 
-    "litseq/clause lookup table build runtime=" << litseq_build_time << "ms\n";
+    "litseq/clause lookup table build runtime=" << litseq_build_time << "us\n";
 
 
   assert(lits.size() != 0);
@@ -1347,12 +1387,12 @@ void Solver::init_device_db(int cutoff) {
    
   sycl_q.memset(d_data.d_hist, 0, sizeof(uint32_t)*n_lits);
   
-  auto* p_lits = d_data.d_cnf;
+  auto* p_cnf = d_data.d_cnf;
   auto* p_hist = d_data.d_hist;
   sycl_q.submit([&](auto& cgh){
     cgh.parallel_for(sycl::range<1>(lit_seq_sz),
       [=] (sycl::id<1> i) {
-        auto lit = p_lits[i];
+        auto lit = p_cnf[i];
         sycl::atomic_ref<uint32_t,
                    sycl::memory_order::relaxed,
                    sycl::memory_scope::device,
@@ -1404,15 +1444,22 @@ void Solver::init_device_db(int cutoff) {
 
 
 
-  // sort candidates in ascending order w.r.t scores
+  // sort candidates in ascending order w.r.t occurences 
   beg = std::chrono::steady_clock::now(); 
   std::sort(d_data.d_candidates, 
       d_data.d_candidates + num_variables(), 
-      [this](uint32_t a, uint32_t b) {
-    return d_data.d_scores[a] < d_data.d_scores[b]; 
-  }); 
+    [this](const uint32_t a, const uint32_t b) {
+        uint32_t pa = 2*a;
+        uint32_t na = 2*a+1;
+        uint32_t pb = 2*b;
+        uint32_t nb = 2*b+1;
+        auto occ_a = d_data.d_hist[pa] + d_data.d_hist[na];
+        auto occ_b = d_data.d_hist[pb] + d_data.d_hist[nb];
+        return occ_a > occ_b;
+    }
+  ); 
 
-
+  
   //thrust::sort_by_key(
   //    d_data.d_candidates, 
   //    d_data.d_candidates+num_variables(),
@@ -1421,11 +1468,11 @@ void Solver::init_device_db(int cutoff) {
 
   end = std::chrono::steady_clock::now(); 
   auto sort_time = 
-    std::chrono::duration_cast<std::chrono::milliseconds>(
+    std::chrono::duration_cast<std::chrono::microseconds>(
       end - beg
     ).count();
   std::cout << 
-    "candidate sort runtime=" << sort_time << "ms\n";
+    "candidate sort runtime=" << sort_time << "us\n";
 
 
 
@@ -1451,29 +1498,56 @@ void Solver::init_device_db(int cutoff) {
 
   auto* p_occur_tab = d_data.d_occur_tab;
   auto* p_l2c = d_data.d_l2c;
+  auto* p_idxs = d_data.d_idxs;
   auto lseq_sz = lit_seq_sz;
+  auto stride = occ_list_slots;
+  auto n_cls = num_clauses();
+  auto* occ_cnt = 
+    sycl::malloc_shared<uint32_t>(n_lits, sycl_q);
+  sycl_q.memset(occ_cnt, 0, sizeof(uint32_t)*n_lits).wait();
+  
+  
+  
+  auto nd = sycl::nd_range{
+    sycl::range<2>(2048, 2048), 
+    sycl::range<2>(16, 16)
+  };
   beg = std::chrono::steady_clock::now();
   sycl_q.submit([&](auto& cgh){
-    // sycl::stream out(8192, 1024, cgh);    
-    auto stride = occ_list_slots;
-    cgh.parallel_for(sycl::range<1>(n_lits),
-      [=] (sycl::id<1> i) {
-        auto start = i*stride;
-        size_t occ = 0;
-        for (int j = 0; j < lseq_sz; j++) {
-          auto l = p_lits[j];
-          if (l == i) {
-            p_occur_tab[start+occ] = p_l2c[j];
-            if (occ < stride) {
-              // only record the available slots
-              occ++;
-            }
-            else {
-              // skip recording occurrence
+    sycl::stream out(8192, 2048, cgh);    
+    cgh.parallel_for(nd,
+      [=] (sycl::nd_item<2> item) {
+        auto id = item.get_global_linear_id();  
+        
+        if (id < n_cls) {
+          // get the begin/end index
+          // of this clause
+          // [beg, end)
+          auto c_beg = p_idxs[id];
+          auto c_end = p_idxs[id+1];
+
+          // calculate size of clause
+          auto c_sz = c_end - c_beg;
+          // get pointer to clause
+          auto* p2c = &p_cnf[c_beg];
+         
+          // iterate through this clause
+          for (uint32_t i = 0; i < c_sz; i++) {
+            auto lit = p2c[i];
+            sycl::atomic_ref<uint32_t,
+             sycl::memory_order::relaxed,
+             sycl::memory_scope::device,
+             sycl::access::address_space::global_space> atom_occ(occ_cnt[lit]);
+
+            if (atom_occ > stride - 1) {
               break;
             }
+
+            auto occtab_idx = lit*stride+atom_occ;
+            p_occur_tab[occtab_idx] = id;
+            atom_occ++;
           }
-        } 
+        }
       
       }  
     ); 
@@ -1483,18 +1557,20 @@ void Solver::init_device_db(int cutoff) {
 
   end = std::chrono::steady_clock::now();
   auto occtab_build_time = 
-    std::chrono::duration_cast<std::chrono::milliseconds>(
+    std::chrono::duration_cast<std::chrono::microseconds>(
       end - beg
     ).count();
 
-  std::cout << "occtab build runtime=" << occtab_build_time << "ms\n";
+  std::cout << "occtab build runtime=" << occtab_build_time << "us\n";
 
   //for (int i = 0; i < occtab_size; i++) {
-  //  if (i % 100 == 0) {
-  //    std::cout << "\nocc[" << (i/100) << "]=";
-  //  } 
-  //  std::cout << d_data.d_occur_tab[i] << ' ';
+  //  if (i % stride == 0) {
+  //    std::cout << "\nocc[" << (i/stride) << "]=";
+  //  }
+  //  if (d_data.d_occur_tab[i] != -1)
+  //    std::cout << d_data.d_occur_tab[i] << ' ';
   //}
+  //std::cout << '\n';
 }
 
 

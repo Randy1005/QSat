@@ -22,7 +22,7 @@ struct VarOrderLt {
  * @brief Heap class for quick selecting
  * the variable with maximum activity to decide next
  */
-class Heap {
+struct Heap {
   // heap of variables
   std::vector<int> heap;
   
@@ -140,7 +140,7 @@ public:
 		// indices
 		//
 		// TODO: add the mentioned scenario to unittest
-		if (empty() || (static_cast<int>(indices.size()) - 1) < v) {
+		if (empty() || (static_cast<int>(indices.size())) < v+1 ) {
       return false;
     }
 
@@ -181,7 +181,10 @@ public:
    * newly inserted node
    */
   void insert(int v) {
-		indices.resize(lt.activities.size(), -1);	
+		
+    if (v+1 > static_cast<int>(indices.size())) {
+      indices.resize(v+1, -1);	
+    }
 	  assert(v < static_cast<int>(indices.size()));
 
 		// pre-condition:

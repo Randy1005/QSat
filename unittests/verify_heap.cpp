@@ -36,6 +36,11 @@ TEST_CASE("Order Heap" * doctest::timeout(300)) {
   heap.insert(3);
   heap.insert(5);
 
+
+  // check in heap or not
+  REQUIRE(heap.in_heap(3) == true);
+  REQUIRE(heap.in_heap(8) == false);
+  REQUIRE(heap.in_heap(7) == false);
   
   // heap {0, 4, 5, 6, 2, 3, 1}
   REQUIRE(heap[0] == 0);
@@ -46,6 +51,8 @@ TEST_CASE("Order Heap" * doctest::timeout(300)) {
   REQUIRE(heap[5] == 3);
   REQUIRE(heap[6] == 1);
   REQUIRE(heap.size() == 7);
+
+
 
   // pop max = var 0
   int max = heap.remove_max();
@@ -91,6 +98,48 @@ TEST_CASE("Order Heap" * doctest::timeout(300)) {
   REQUIRE(heap[3] == 6);
   REQUIRE(heap[4] == 4);
   REQUIRE(heap[5] == 5);
+
+  heap.insert(12);
+  REQUIRE(heap.size() == 7);
+  REQUIRE(heap.indices.size() == 13);
+  REQUIRE(heap.indices[0] == -1);
+  REQUIRE(heap.indices[7] == -1);
+  REQUIRE(heap.indices[8] == -1);
+  REQUIRE(heap.indices[9] == -1);
+  REQUIRE(heap.indices[10] == -1);
+  REQUIRE(heap.indices[11] == -1);
+
+  REQUIRE(heap.in_heap(7) == false);
+
+  heap.insert(7);
+  REQUIRE(heap.indices[7] != -1);
+  REQUIRE(heap.size() == 8);
+  heap.decrease(1);
+
+  int v = heap.remove_max();
+  REQUIRE(v == 1);
+  REQUIRE(heap.size() == 7);
+  v = heap.remove_max();
+  std::cout << v << '\n';
+  REQUIRE(heap.size() == 6);
+  v = heap.remove_max();
+  std::cout << v << '\n';
+  REQUIRE(heap.size() == 5);
+  v = heap.remove_max();
+  std::cout << v << '\n';
+  REQUIRE(heap.size() == 4);
+  v = heap.remove_max();
+  std::cout << v << '\n';
+  REQUIRE(heap.size() == 3);
+  v = heap.remove_max();
+  std::cout << v << '\n';
+  REQUIRE(heap.size() == 2);
+  v = heap.remove_max();
+  std::cout << v << '\n';
+  REQUIRE(heap.size() == 1);
+  v = heap.remove_max();
+  std::cout << v << '\n';
+  REQUIRE(heap.empty());
 
 }
 

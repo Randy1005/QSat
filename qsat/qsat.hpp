@@ -790,7 +790,10 @@ private:
   // priority queue 
   // for selecting var with max activity
   Heap _order_heap;
-  
+ 
+  std::queue<int> vq;
+  std::vector<bool> inq;
+
   // trail 
   // keeps track of the literals we made decisions on
   // (all decision levels)
@@ -870,7 +873,7 @@ inline bool Solver::unchecked_enqueue(const Literal &p, const int from_cla) {
 
 	// make the assignment, such that this literal
 	// evaluates to true
-	_assigns[var(p)] = static_cast<Status>(!sign(p)); 
+	_assigns[var(p)] = static_cast<Status>(!sign(p));
 	
 	// store decision level and reason clause
 	_var_info[var(p)] = VarInfo{from_cla, static_cast<int>(decision_level())};
