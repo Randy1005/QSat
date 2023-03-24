@@ -12,5 +12,6 @@
 
 ## TODO
 - [ ] modify SYCL to CUDA
-- [ ] configure kernels with num_blocks that fit each problem (instead of fixed blocks)
+  - [ ] cuda memory pool
+  - [ ] configure kernels with num_blocks that fit each problem (instead of fixed blocks)
 
