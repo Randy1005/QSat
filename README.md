@@ -11,7 +11,6 @@
 - [x] geometric solver restart strategy
 
 ## TODO
-- [ ] self-subsumption
-- [ ] variable elimination
-- [ ] phase saving
+- [ ] modify SYCL to CUDA
+- [ ] configure kernels with num_blocks that fit each problem (instead of fixed blocks)
 
