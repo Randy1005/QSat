@@ -5,6 +5,10 @@
 
 namespace qsat {
 
+
+cudaDeviceProp dev_prop;
+
+
 Literal::Literal(int var) {
   if (var == 0) {
     throw std::runtime_error("variable cannot be zero");
@@ -611,82 +615,81 @@ void Solver::analyze(int confl_cref,
 
 
 
-
-void Solver::sycl_check_subsumptions(uint32_t lit) {
-  std::cout << "SUB check for OT[" << lit << "]\n";
-  auto stride = occ_list_slots; 
-  auto* p_occtab = d_data.d_occur_tab;
-  auto* p_idxs = d_data.d_idxs;
-  auto* p_cnf = d_data.d_cnf;
-  auto* p_cl_infos = d_data.d_cl_infos;
-  auto l = lit;
-  auto* s = this;
-
-
-  auto beg = std::chrono::steady_clock::now();
-  sycl_q.submit([&](auto& cgh){
-    sycl::stream out(8192, 1024, cgh);    
-    cgh.parallel_for(sycl::range<2>(stride, stride),
-      [=] (sycl::id<2> idx) {
-        auto tx = idx[0];  
-        auto ty = idx[1];  
-        
-        // get clause indices
-        auto ca_idx = p_occtab[l*stride+tx];
-        auto cb_idx = p_occtab[l*stride+ty];
-          
-
-        if (ca_idx == -1 || cb_idx == -1 || ca_idx == cb_idx) {
-          return;
-        }
-
-
-        // get clause start/end idx in
-        // the universal literal sequence (d_cnf)
-        auto ca_beg = p_idxs[ca_idx];
-        auto ca_end = p_idxs[ca_idx+1];
-        auto cb_beg = p_idxs[cb_idx];
-        auto cb_end = p_idxs[cb_idx+1];
-  
-        
-        // get size of clause a and b
-        auto sz_a = ca_end - ca_beg;
-        auto sz_b = cb_end - cb_beg;
-
-        // get pointer to start of clause
-        // a and b
-        auto* p2ca = &p_cnf[ca_beg];
-        auto* p2cb = &p_cnf[cb_beg];
-        
-        // get clause signatures
-        auto sig_a = p_cl_infos[ca_idx].sig;
-        auto sig_b = p_cl_infos[cb_idx].sig;
-      
-
-        uint32_t hash_check = (sig_a & (~sig_b));
-
-        // subset test
-        if (sz_a < sz_b && hash_check == 0)   {
-          if (s->is_subset(p2cb, sz_b, p2ca, sz_a)) {
-            // mark the state of this clause as deleted
-            p_cl_infos[cb_idx].state = 2;  
-          }
-        }
-      }  
-    ); 
-
-  }).wait();
-
-
-  auto end = std::chrono::steady_clock::now();
-
-  auto time = std::chrono::duration_cast<std::chrono::microseconds>(
-    end-beg
-  ).count();
-  std::cout << "SUB check runtime=" << time << "us\n";
-
-  
-}
+//void Solver::sycl_check_subsumptions(uint32_t lit) {
+//  std::cout << "SUB check for OT[" << lit << "]\n";
+//  auto stride = occ_list_slots; 
+//  auto* p_occtab = d_data.d_occur_tab;
+//  auto* p_idxs = d_data.d_idxs;
+//  auto* p_cnf = d_data.d_cnf;
+//  auto* p_cl_infos = d_data.d_cl_infos;
+//  auto l = lit;
+//  auto* s = this;
+//
+//
+//  auto beg = std::chrono::steady_clock::now();
+//  sycl_q.submit([&](auto& cgh){
+//    sycl::stream out(8192, 1024, cgh);    
+//    cgh.parallel_for(sycl::range<2>(stride, stride),
+//      [=] (sycl::id<2> idx) {
+//        auto tx = idx[0];  
+//        auto ty = idx[1];  
+//        
+//        // get clause indices
+//        auto ca_idx = p_occtab[l*stride+tx];
+//        auto cb_idx = p_occtab[l*stride+ty];
+//          
+//
+//        if (ca_idx == -1 || cb_idx == -1 || ca_idx == cb_idx) {
+//          return;
+//        }
+//
+//
+//        // get clause start/end idx in
+//        // the universal literal sequence (d_cnf)
+//        auto ca_beg = p_idxs[ca_idx];
+//        auto ca_end = p_idxs[ca_idx+1];
+//        auto cb_beg = p_idxs[cb_idx];
+//        auto cb_end = p_idxs[cb_idx+1];
+//  
+//        
+//        // get size of clause a and b
+//        auto sz_a = ca_end - ca_beg;
+//        auto sz_b = cb_end - cb_beg;
+//
+//        // get pointer to start of clause
+//        // a and b
+//        auto* p2ca = &p_cnf[ca_beg];
+//        auto* p2cb = &p_cnf[cb_beg];
+//        
+//        // get clause signatures
+//        auto sig_a = p_cl_infos[ca_idx].sig;
+//        auto sig_b = p_cl_infos[cb_idx].sig;
+//      
+//
+//        uint32_t hash_check = (sig_a & (~sig_b));
+//
+//        // subset test
+//        if (sz_a < sz_b && hash_check == 0)   {
+//          if (s->is_subset(p2cb, sz_b, p2ca, sz_a)) {
+//            // mark the state of this clause as deleted
+//            p_cl_infos[cb_idx].state = 2;  
+//          }
+//        }
+//      }  
+//    ); 
+//
+//  }).wait();
+//
+//
+//  auto end = std::chrono::steady_clock::now();
+//
+//  auto time = std::chrono::duration_cast<std::chrono::microseconds>(
+//    end-beg
+//  ).count();
+//  std::cout << "SUB check runtime=" << time << "us\n";
+//
+//  
+//}
 
 
 void Solver::remove_clause(const int cref) {
@@ -1115,10 +1118,9 @@ void Solver::reset() {
 }
 
 Status Solver::solve() {
-  // initialize inprocessor database
-  init_device_db(500);
- 
-  // TODO: prune authorized candidates w/ cutoff
+
+  size_t free;
+  // auto ret = get_gpu_info(free);
 
 
   _model.clear();
@@ -1283,294 +1285,311 @@ bool Solver::transpile_task_to_dimacs(const std::string& task_file_name) {
 */
 
 
-void Solver::init_device_db(int cutoff) {
+//void Solver::init_device_db(int cutoff) {
+//
+//  // set up device
+//  sycl_q = sycl::queue(sycl::gpu_selector_v);
+//  std::cout << "selected device: " <<
+//    sycl_q.get_device().get_info<sycl::info::device::name>() << '\n';
+//
+//  auto device = sycl_q.get_device();
+//  auto max_work_group_size = device.get_info<sycl::info::device::max_work_group_size>();
+//  auto max_work_item_dimensions = device.get_info<sycl::info::device::max_work_item_dimensions>();
+//  auto max_work_item_sizes = device.get_info<sycl::info::device::max_work_item_sizes<3>>();
+//  auto max_compute_units = device.get_info<sycl::info::device::max_compute_units>();
+//  std::cout << "max work group size = " << max_work_group_size << '\n';
+//  std::cout << "max work item dimensions = " << max_work_item_dimensions << '\n';
+//  std::cout << "max work item size = " << max_work_item_sizes[0] << ' ' << max_work_item_sizes[1]
+//    << ' ' << max_work_item_sizes[2] << '\n';
+//  std::cout << "max compute units = " << max_compute_units << '\n';
+//
+//
+//  // initialize memory for CNF on device
+//  assert(num_clauses() != 0);
+//
+//
+//  // construct literal sequence
+//  // and clause lookup index list
+//  //
+//  // e.g.
+//  // C0 = {0, 2, 8}, C1 = {1, 4, 5}
+//  //
+//  // lit seq =      {0 2 8 1 4 5}
+//  //                 ^     ^
+//  // lookup index = {0     3    }    
+//  std::vector<uint32_t> lits, indices, l2c;
+//  std::vector<ClauseInfo> cl_infos;
+// 
+//  auto beg = std::chrono::steady_clock::now();
+//  indices.emplace_back(0);
+//  for (size_t i = 0; i < num_clauses(); i++) {
+//    auto ls = _clauses[i].literals;
+//    std::sort(ls.begin(), ls.end(), 
+//        [](const Literal& a, const Literal& b) {
+//          return a.id < b.id;    
+//        }
+//    );
+//
+//    // calculate signature for clause
+//    _clauses[i].calc_signature();
+//    cl_infos.emplace_back(0, 0, 0, 0, 
+//                          ls.size()*sizeof(uint32_t),
+//                          0, _clauses[i].signature); 
+//
+//    for (auto l : ls) {
+//      lits.emplace_back(static_cast<uint32_t>(l.id)); 
+//      l2c.emplace_back(static_cast<uint32_t>(i));
+//    }
+//
+//    indices.emplace_back(ls.size()+indices[i]);
+//  }
+// 
+//  auto end = std::chrono::steady_clock::now();
+//  auto litseq_build_time = 
+//    std::chrono::duration_cast<std::chrono::microseconds>(
+//      end - beg
+//    ).count();
+//  std::cout << 
+//    "litseq/clause lookup table build runtime=" << litseq_build_time << "us\n";
+//
+//
+//  assert(lits.size() != 0);
+//  assert(indices.size() != 0);
+//  assert(cl_infos.size() != 0);
+//
+//  idxs_sz = indices.size();
+//
+//  d_data.d_cnf = sycl::malloc_shared<uint32_t>(2*lits.size(), sycl_q); 
+//  d_data.d_l2c = sycl::malloc_shared<uint32_t>(2*lits.size(), sycl_q); 
+//  d_data.d_idxs = sycl::malloc_shared<uint32_t>(2*indices.size(), sycl_q); 
+//  d_data.d_cl_infos = sycl::malloc_shared<ClauseInfo>(2*cl_infos.size(), sycl_q);
+//  assert(d_data.d_cnf); 
+//  assert(d_data.d_idxs);
+//  assert(d_data.d_cl_infos);
+//
+//  sycl_q.memcpy(d_data.d_cnf, lits.data(), sizeof(uint32_t)*lits.size());
+//  sycl_q.memcpy(d_data.d_l2c, l2c.data(), sizeof(uint32_t)*l2c.size());
+//  sycl_q.memcpy(d_data.d_idxs, 
+//                indices.data(), 
+//                sizeof(uint32_t)*indices.size());
+//  sycl_q.memcpy(d_data.d_cl_infos, 
+//                cl_infos.data(), 
+//                sizeof(ClauseInfo)*cl_infos.size());
+//
+//
+//  
+//  // -----------------------------------------
+//  // parallel construct histogram on device 
+//  // -----------------------------------------
+//  auto n_lits = 2*num_variables();
+//  lit_seq_sz = lits.size();
+//
+//  d_data.d_hist = 
+//    sycl::malloc_shared<uint32_t>(n_lits, sycl_q);
+//   
+//  sycl_q.memset(d_data.d_hist, 0, sizeof(uint32_t)*n_lits);
+//  
+//  auto* p_cnf = d_data.d_cnf;
+//  auto* p_hist = d_data.d_hist;
+//  sycl_q.submit([&](auto& cgh){
+//    cgh.parallel_for(sycl::range<1>(lit_seq_sz),
+//      [=] (sycl::id<1> i) {
+//        auto lit = p_cnf[i];
+//        sycl::atomic_ref<uint32_t,
+//                   sycl::memory_order::relaxed,
+//                   sycl::memory_scope::device,
+//                   sycl::access::address_space::global_space
+//                  > atom_hist(p_hist[lit]);
+//        atom_hist++;
+//      }  
+//    ); 
+//
+//  }).wait();
+//
+//  //for (int i = 0; i < n_lits; i++) {
+//  //  std::cout << "h[" << i << "]=" << d_data.d_hist[i] << '\n';
+//  //} 
+//
+//  // -----------------------------------------
+//  // parallel calculate scores on device
+//  // scores are indicative of how many resolvents
+//  // would be generated if we eliminate var x
+//  // -----------------------------------------
+//  
+//  // allocate memory for scores (size of n_vars)
+//  d_data.d_scores = 
+//    sycl::malloc_shared<uint32_t>(num_variables(), sycl_q);
+//  d_data.d_candidates = 
+//    sycl::malloc_shared<uint32_t>(num_variables(), sycl_q);
+//  
+//  auto* p_cands = d_data.d_candidates;
+//  auto* p_scores = d_data.d_scores;
+//  sycl_q.submit([&](auto& cgh){
+//    cgh.parallel_for(sycl::range<1>(num_variables()),
+//      [=] (sycl::id<1> i) {
+//        uint32_t var = i;
+//        p_cands[i] = var;
+//        
+//        // calculate v, v'
+//        uint32_t l = 2*var;
+//        uint32_t l_bar = 2*var+1;
+//
+//        if (p_hist[l] == 0 || p_hist[l_bar] == 0) {
+//          p_scores[var] = sycl::max(p_hist[l], p_hist[l_bar]);  
+//        }
+//        else {
+//          p_scores[var] = p_hist[l] * p_hist[l_bar];
+//        }
+//      }  
+//    ); 
+//  }).wait();
+//
+//
+//
+//  // sort candidates in ascending order w.r.t occurences 
+//  beg = std::chrono::steady_clock::now(); 
+//  std::sort(d_data.d_candidates, 
+//      d_data.d_candidates + num_variables(), 
+//    [this](const uint32_t a, const uint32_t b) {
+//        uint32_t pa = 2*a;
+//        uint32_t na = 2*a+1;
+//        uint32_t pb = 2*b;
+//        uint32_t nb = 2*b+1;
+//        auto occ_a = d_data.d_hist[pa] + d_data.d_hist[na];
+//        auto occ_b = d_data.d_hist[pb] + d_data.d_hist[nb];
+//        return occ_a > occ_b;
+//    }
+//  ); 
+//
+//  
+//  //thrust::sort_by_key(
+//  //    d_data.d_candidates, 
+//  //    d_data.d_candidates+num_variables(),
+//  //    d_data.d_scores); 
+//
+//
+//  end = std::chrono::steady_clock::now(); 
+//  auto sort_time = 
+//    std::chrono::duration_cast<std::chrono::microseconds>(
+//      end - beg
+//    ).count();
+//  std::cout << 
+//    "candidate sort runtime=" << sort_time << "us\n";
+//
+//
+//
+//  // prune any candidates that has a score larger than
+//  // the user-configured cutoff value
+//  // NOTE: this is probably not necessary?
+//
+//  // -----------------------------------------
+//  // parallel construct occurrence table on device 
+//  // -----------------------------------------
+//  
+//  // each literal gets fixed 2*N slots
+//  // to store their occurences
+//  // now N = cutoff
+//  occ_list_slots = 2*cutoff;
+//  auto occtab_size = occ_list_slots*2*num_variables();
+//  
+//  
+//  d_data.d_occur_tab = 
+//    sycl::malloc_shared<int>(occtab_size, sycl_q);
+// 
+//  sycl_q.memset(d_data.d_occur_tab, -1, sizeof(int)*occtab_size).wait();
+//
+//  auto* p_occur_tab = d_data.d_occur_tab;
+//  auto* p_l2c = d_data.d_l2c;
+//  auto* p_idxs = d_data.d_idxs;
+//  auto lseq_sz = lit_seq_sz;
+//  auto stride = occ_list_slots;
+//  auto n_cls = num_clauses();
+//  auto* occ_cnt = 
+//    sycl::malloc_shared<uint32_t>(n_lits, sycl_q);
+//  sycl_q.memset(occ_cnt, 0, sizeof(uint32_t)*n_lits).wait();
+//  
+//  
+//  // TODO: what if I don't have enough work items
+//  // in these work groups?
+//  //
+//  // TODO: modify this to use minimal kernel configs
+//  //
+//  // N = elements to process
+//  // blocks = (N + BLOCK_SZ - 1) / BLOCK_SZ
+//  auto nd = sycl::nd_range{
+//    sycl::range<2>(2048, 2048), 
+//    sycl::range<2>(16, 16)
+//  };
+//  beg = std::chrono::steady_clock::now();
+//  sycl_q.submit([&](auto& cgh){
+//    sycl::stream out(8192, 2048, cgh);    
+//    cgh.parallel_for(nd,
+//      [=] (sycl::nd_item<2> item) {
+//        auto id = item.get_global_linear_id();  
+//        
+//        if (id < n_cls) {
+//          // get the begin/end index
+//          // of this clause
+//          // [beg, end)
+//          auto c_beg = p_idxs[id];
+//          auto c_end = p_idxs[id+1];
+//
+//          // calculate size of clause
+//          auto c_sz = c_end - c_beg;
+//          // get pointer to clause
+//          auto* p2c = &p_cnf[c_beg];
+//         
+//          // iterate through this clause
+//          for (uint32_t i = 0; i < c_sz; i++) {
+//            auto lit = p2c[i];
+//            sycl::atomic_ref<uint32_t,
+//             sycl::memory_order::relaxed,
+//             sycl::memory_scope::device,
+//             sycl::access::address_space::global_space> atom_occ(occ_cnt[lit]);
+//
+//            if (atom_occ > stride - 1) {
+//              break;
+//            }
+//
+//            auto occtab_idx = lit*stride+atom_occ;
+//            p_occur_tab[occtab_idx] = id;
+//            atom_occ++;
+//          }
+//        }
+//      
+//      }  
+//    ); 
+//
+//  }).wait();
+//
+//
+//  end = std::chrono::steady_clock::now();
+//  auto occtab_build_time = 
+//    std::chrono::duration_cast<std::chrono::microseconds>(
+//      end - beg
+//    ).count();
+//
+//  std::cout << "occtab build runtime=" << occtab_build_time << "us\n";
+//
+//  //for (int i = 0; i < occtab_size; i++) {
+//  //  if (i % stride == 0) {
+//  //    std::cout << "\nocc[" << (i/stride) << "]=";
+//  //  }
+//  //  if (d_data.d_occur_tab[i] != -1)
+//  //    std::cout << d_data.d_occur_tab[i] << ' ';
+//  //}
+//  //std::cout << '\n';
+//}
 
-  // set up device
-  sycl_q = sycl::queue(sycl::gpu_selector_v);
-  std::cout << "selected device: " <<
-    sycl_q.get_device().get_info<sycl::info::device::name>() << '\n';
 
-  auto device = sycl_q.get_device();
-  auto max_work_group_size = device.get_info<sycl::info::device::max_work_group_size>();
-  auto max_work_item_dimensions = device.get_info<sycl::info::device::max_work_item_dimensions>();
-  auto max_work_item_sizes = device.get_info<sycl::info::device::max_work_item_sizes<3>>();
-  auto max_compute_units = device.get_info<sycl::info::device::max_compute_units>();
-  std::cout << "max work group size = " << max_work_group_size << '\n';
-  std::cout << "max work item dimensions = " << max_work_item_dimensions << '\n';
-  std::cout << "max work item size = " << max_work_item_sizes[0] << ' ' << max_work_item_sizes[1]
-    << ' ' << max_work_item_sizes[2] << '\n';
-  std::cout << "max compute units = " << max_compute_units << '\n';
+void Solver::init_dev_db_cuda() { 
+
+};
 
 
-  // initialize memory for CNF on device
-  assert(num_clauses() != 0);
-
-
-  // construct literal sequence
-  // and clause lookup index list
-  //
-  // e.g.
-  // C0 = {0, 2, 8}, C1 = {1, 4, 5}
-  //
-  // lit seq =      {0 2 8 1 4 5}
-  //                 ^     ^
-  // lookup index = {0     3    }    
-  std::vector<uint32_t> lits, indices, l2c;
-  std::vector<ClauseInfo> cl_infos;
- 
-  auto beg = std::chrono::steady_clock::now();
-  indices.emplace_back(0);
-  for (size_t i = 0; i < num_clauses(); i++) {
-    auto ls = _clauses[i].literals;
-    std::sort(ls.begin(), ls.end(), 
-        [](const Literal& a, const Literal& b) {
-          return a.id < b.id;    
-        }
-    );
-
-    // calculate signature for clause
-    _clauses[i].calc_signature();
-    cl_infos.emplace_back(0, 0, 0, 0, 
-                          ls.size()*sizeof(uint32_t),
-                          0, _clauses[i].signature); 
-
-    for (auto l : ls) {
-      lits.emplace_back(static_cast<uint32_t>(l.id)); 
-      l2c.emplace_back(static_cast<uint32_t>(i));
-    }
-
-    indices.emplace_back(ls.size()+indices[i]);
-  }
- 
-  auto end = std::chrono::steady_clock::now();
-  auto litseq_build_time = 
-    std::chrono::duration_cast<std::chrono::microseconds>(
-      end - beg
-    ).count();
-  std::cout << 
-    "litseq/clause lookup table build runtime=" << litseq_build_time << "us\n";
-
-
-  assert(lits.size() != 0);
-  assert(indices.size() != 0);
-  assert(cl_infos.size() != 0);
-
-  idxs_sz = indices.size();
-
-  d_data.d_cnf = sycl::malloc_shared<uint32_t>(2*lits.size(), sycl_q); 
-  d_data.d_l2c = sycl::malloc_shared<uint32_t>(2*lits.size(), sycl_q); 
-  d_data.d_idxs = sycl::malloc_shared<uint32_t>(2*indices.size(), sycl_q); 
-  d_data.d_cl_infos = sycl::malloc_shared<ClauseInfo>(2*cl_infos.size(), sycl_q);
-  assert(d_data.d_cnf); 
-  assert(d_data.d_idxs);
-  assert(d_data.d_cl_infos);
-
-  sycl_q.memcpy(d_data.d_cnf, lits.data(), sizeof(uint32_t)*lits.size());
-  sycl_q.memcpy(d_data.d_l2c, l2c.data(), sizeof(uint32_t)*l2c.size());
-  sycl_q.memcpy(d_data.d_idxs, 
-                indices.data(), 
-                sizeof(uint32_t)*indices.size());
-  sycl_q.memcpy(d_data.d_cl_infos, 
-                cl_infos.data(), 
-                sizeof(ClauseInfo)*cl_infos.size());
-
-
+void Solver::build_hist_cuda() {
   
-  // -----------------------------------------
-  // parallel construct histogram on device 
-  // -----------------------------------------
-  auto n_lits = 2*num_variables();
-  lit_seq_sz = lits.size();
 
-  d_data.d_hist = 
-    sycl::malloc_shared<uint32_t>(n_lits, sycl_q);
-   
-  sycl_q.memset(d_data.d_hist, 0, sizeof(uint32_t)*n_lits);
-  
-  auto* p_cnf = d_data.d_cnf;
-  auto* p_hist = d_data.d_hist;
-  sycl_q.submit([&](auto& cgh){
-    cgh.parallel_for(sycl::range<1>(lit_seq_sz),
-      [=] (sycl::id<1> i) {
-        auto lit = p_cnf[i];
-        sycl::atomic_ref<uint32_t,
-                   sycl::memory_order::relaxed,
-                   sycl::memory_scope::device,
-                   sycl::access::address_space::global_space
-                  > atom_hist(p_hist[lit]);
-        atom_hist++;
-      }  
-    ); 
-
-  }).wait();
-
-  //for (int i = 0; i < n_lits; i++) {
-  //  std::cout << "h[" << i << "]=" << d_data.d_hist[i] << '\n';
-  //} 
-
-  // -----------------------------------------
-  // parallel calculate scores on device
-  // scores are indicative of how many resolvents
-  // would be generated if we eliminate var x
-  // -----------------------------------------
-  
-  // allocate memory for scores (size of n_vars)
-  d_data.d_scores = 
-    sycl::malloc_shared<uint32_t>(num_variables(), sycl_q);
-  d_data.d_candidates = 
-    sycl::malloc_shared<uint32_t>(num_variables(), sycl_q);
-  
-  auto* p_cands = d_data.d_candidates;
-  auto* p_scores = d_data.d_scores;
-  sycl_q.submit([&](auto& cgh){
-    cgh.parallel_for(sycl::range<1>(num_variables()),
-      [=] (sycl::id<1> i) {
-        uint32_t var = i;
-        p_cands[i] = var;
-        
-        // calculate v, v'
-        uint32_t l = 2*var;
-        uint32_t l_bar = 2*var+1;
-
-        if (p_hist[l] == 0 || p_hist[l_bar] == 0) {
-          p_scores[var] = sycl::max(p_hist[l], p_hist[l_bar]);  
-        }
-        else {
-          p_scores[var] = p_hist[l] * p_hist[l_bar];
-        }
-      }  
-    ); 
-  }).wait();
-
-
-
-  // sort candidates in ascending order w.r.t occurences 
-  beg = std::chrono::steady_clock::now(); 
-  std::sort(d_data.d_candidates, 
-      d_data.d_candidates + num_variables(), 
-    [this](const uint32_t a, const uint32_t b) {
-        uint32_t pa = 2*a;
-        uint32_t na = 2*a+1;
-        uint32_t pb = 2*b;
-        uint32_t nb = 2*b+1;
-        auto occ_a = d_data.d_hist[pa] + d_data.d_hist[na];
-        auto occ_b = d_data.d_hist[pb] + d_data.d_hist[nb];
-        return occ_a > occ_b;
-    }
-  ); 
-
-  
-  //thrust::sort_by_key(
-  //    d_data.d_candidates, 
-  //    d_data.d_candidates+num_variables(),
-  //    d_data.d_scores); 
-
-
-  end = std::chrono::steady_clock::now(); 
-  auto sort_time = 
-    std::chrono::duration_cast<std::chrono::microseconds>(
-      end - beg
-    ).count();
-  std::cout << 
-    "candidate sort runtime=" << sort_time << "us\n";
-
-
-
-  // prune any candidates that has a score larger than
-  // the user-configured cutoff value
-  // NOTE: this is probably not necessary?
-
-  // -----------------------------------------
-  // parallel construct occurrence table on device 
-  // -----------------------------------------
-  
-  // each literal gets fixed 2*N slots
-  // to store their occurences
-  // now N = cutoff
-  occ_list_slots = 2*cutoff;
-  auto occtab_size = occ_list_slots*2*num_variables();
-  
-  
-  d_data.d_occur_tab = 
-    sycl::malloc_shared<int>(occtab_size, sycl_q);
- 
-  sycl_q.memset(d_data.d_occur_tab, -1, sizeof(int)*occtab_size).wait();
-
-  auto* p_occur_tab = d_data.d_occur_tab;
-  auto* p_l2c = d_data.d_l2c;
-  auto* p_idxs = d_data.d_idxs;
-  auto lseq_sz = lit_seq_sz;
-  auto stride = occ_list_slots;
-  auto n_cls = num_clauses();
-  auto* occ_cnt = 
-    sycl::malloc_shared<uint32_t>(n_lits, sycl_q);
-  sycl_q.memset(occ_cnt, 0, sizeof(uint32_t)*n_lits).wait();
-  
-  
-  
-  auto nd = sycl::nd_range{
-    sycl::range<2>(2048, 2048), 
-    sycl::range<2>(16, 16)
-  };
-  beg = std::chrono::steady_clock::now();
-  sycl_q.submit([&](auto& cgh){
-    sycl::stream out(8192, 2048, cgh);    
-    cgh.parallel_for(nd,
-      [=] (sycl::nd_item<2> item) {
-        auto id = item.get_global_linear_id();  
-        
-        if (id < n_cls) {
-          // get the begin/end index
-          // of this clause
-          // [beg, end)
-          auto c_beg = p_idxs[id];
-          auto c_end = p_idxs[id+1];
-
-          // calculate size of clause
-          auto c_sz = c_end - c_beg;
-          // get pointer to clause
-          auto* p2c = &p_cnf[c_beg];
-         
-          // iterate through this clause
-          for (uint32_t i = 0; i < c_sz; i++) {
-            auto lit = p2c[i];
-            sycl::atomic_ref<uint32_t,
-             sycl::memory_order::relaxed,
-             sycl::memory_scope::device,
-             sycl::access::address_space::global_space> atom_occ(occ_cnt[lit]);
-
-            if (atom_occ > stride - 1) {
-              break;
-            }
-
-            auto occtab_idx = lit*stride+atom_occ;
-            p_occur_tab[occtab_idx] = id;
-            atom_occ++;
-          }
-        }
-      
-      }  
-    ); 
-
-  }).wait();
-
-
-  end = std::chrono::steady_clock::now();
-  auto occtab_build_time = 
-    std::chrono::duration_cast<std::chrono::microseconds>(
-      end - beg
-    ).count();
-
-  std::cout << "occtab build runtime=" << occtab_build_time << "us\n";
-
-  //for (int i = 0; i < occtab_size; i++) {
-  //  if (i % stride == 0) {
-  //    std::cout << "\nocc[" << (i/stride) << "]=";
-  //  }
-  //  if (d_data.d_occur_tab[i] != -1)
-  //    std::cout << d_data.d_occur_tab[i] << ' ';
-  //}
-  //std::cout << '\n';
 }
 
 

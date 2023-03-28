@@ -12,16 +12,19 @@
 #include "heap.hpp"
 #include <breakid.hpp>
 #include "taskflow/taskflow.hpp"
-#include "taskflow/sycl/syclflow.hpp"
+//#include "taskflow/sycl/syclflow.hpp"
 #include <thrust/host_vector.h>
 #include <thrust/device_vector.h>
 #include <thrust/generate.h>
 #include <thrust/sort.h>
 #include <thrust/copy.h>
+#include "control.hpp"
 
 // #include "intel_task_grammar.hpp"
 
 namespace qsat {
+
+
 
 class Solver;
 struct DeviceData;
@@ -597,6 +600,19 @@ public:
 
 
   /**
+   * @brief initialize device database cuda
+   *
+   * 1. device cnf
+   * 2. device occurence table
+   */
+  void init_dev_db_cuda();
+
+  /**
+   * @brief build histogram cuda
+   */
+  void build_hist_cuda();
+
+  /**
    * @brief cleanup device memory
    */
   void cleanup_device_db();
@@ -651,11 +667,14 @@ public:
   BID::BreakID breakid;
 
 
+  /*
   sycl::queue sycl_q;
   DeviceData d_data;
   uint32_t occ_list_slots;
   uint32_t idxs_sz;
   uint32_t lit_seq_sz;
+  */
+
 private:
 
   /**

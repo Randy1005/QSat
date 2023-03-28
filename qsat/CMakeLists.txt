@@ -1,20 +1,22 @@
 add_library(qsat qsat.cpp)
-message(STATUS "$ENV{DPCPP_ROOT}")
-
+add_library(control control.cpp)
 # specify other sources for the qsat library
 # (if any) with target_sources
 
 # include headers from sycl
-target_include_directories(qsat PUBLIC 
-  $ENV{DPCPP_ROOT}/llvm/build/include/
-)
+# target_include_directories(qsat PUBLIC 
+# $ENV{DPCPP_ROOT}/llvm/build/include/
+# )
 
 # find the pthreads library
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
 target_link_libraries(qsat PUBLIC Threads::Threads)
-target_link_libraries(qsat PUBLIC Thrust)
+#target_link_libraries(qsat PRIVATE Thrust)
+target_link_libraries(qsat PUBLIC control)
+target_link_libraries(qsat PRIVATE CUDA::cudart)
+
 
 
 
