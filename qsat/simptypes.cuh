@@ -1,3 +1,6 @@
+#ifndef __SIMP_TYPES_
+#define __SIMP_TYPES_
+
 #include <thrust/device_ptr.h>
 #include "constants.hpp"
 #include "definitions.cuh"
@@ -12,6 +15,11 @@ typedef thrust::device_ptr<uint32_t> t_iptr;
 struct CuPool {
 	addr_t mem;
 	size_t cap;
+};
+
+struct CuCNF {
+	uint32* mem;
+	S_Ref size, cap;
 };
 
 struct CuLits {
@@ -58,7 +66,7 @@ struct CuHist {
 		assert(h_hist && i < cnf_info.n_dual_vars); 
 		return h_hist[i]; 
 	}
-	inline void	cache_hist	(const cudaStream_t& s = 0) {
+	inline void	cache_hist(const cudaStream_t& s = 0) {
 		CUDA_CHECK(
 			cudaMemcpyAsync(h_hist, 
 				d_hist, 
@@ -67,7 +75,7 @@ struct CuHist {
 				s)
 		);
 	}
-	inline void	fetch_vars	(const uint32* vorg, const cudaStream_t& s = 0) {
+	inline void	fetch_vars(const uint32* vorg, const cudaStream_t& s = 0) {
 		CUDA_CHECK(
 			cudaMemcpyAsync(d_vorg, 
 				vorg, 
@@ -80,8 +88,24 @@ struct CuHist {
 };
 
 
+class CNF {
+
+
+
+
+private:
+	CuCNF _data;
+	
+
+
+
+
+};
+
+
 
 
 
 
 } // end of name space ----------------------------------
+#endif

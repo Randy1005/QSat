@@ -2,7 +2,6 @@
 #ifndef __GL_DEFS_
 #define __GL_DEFS_
 
-
 #include <iostream>
 #include <algorithm>
 #include <cstring>

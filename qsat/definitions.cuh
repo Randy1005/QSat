@@ -16,12 +16,46 @@ extern uint32 max_gpu_threads;
 extern size_t max_gpu_shared_mem;
 
 // global variables
+// TODO: refactor these global vars to other files
 cudaDeviceProp dev_prop;
 uint32 max_gpu_threads;
 size_t max_gpu_shared_mem;
-
 bool quiet_en = false;
 int verbose = 2;
+
+
+
+#if !defined(_QSAT_H_)
+#define _QSAT_H_ inline __host__
+#endif
+
+#if !defined(_QSAT_D_)
+#define _QSAT_D_ __device__
+#endif
+
+#if !defined(_QSAT_IN_D_)
+#define _QSAT_IN_D_ inline __device__
+#endif
+
+#if !defined(_QSAT_H_D_)
+#define _QSAT_H_D_ inline __host__ __device__
+#endif
+
+#if	defined(_DEBUG) || defined(DEBUG) || !defined(NDEBUG)
+#define LOGERR(MESSAGE)	\
+	do { \
+			cudaError_t ERR = cudaGetLastError(); \
+			if (cudaSuccess != ERR) { \
+				PFLOGEN("%s(%i): %s due to (%d) %s", __FILE__, __LINE__, MESSAGE, static_cast<int>(ERR), cudaGetErrorString(ERR)); \
+				cudaDeviceReset(); \
+				exit(1); \
+			} \
+	} while(0)
+#else
+#define LOGERR(MESSAGE)	do { } while(0)
+#endif
+
+
 
 
 

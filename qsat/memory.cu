@@ -1,10 +1,8 @@
 #include "memory.cuh"
+#include "primitives.cuh"
 #include <cub/device/device_scan.cuh>
 #include <cub/device/device_select.cuh>
 #include <cub/cub.cuh>
-
-
-
 
 
 namespace qsat {
@@ -31,7 +29,7 @@ uint32* CuMM::resize_lits(const size_t& min_lits) {
 	// not enough memory to store literals
 	if (_lits_pool.cap < min_cap) {
 		dfree(_lits_pool);
-		assert(_lits_pool.mem = nullptr);
+		assert(_lits_pool.mem == nullptr);
 		if (!has_device_mem(min_cap, "Literals")) {
 			return nullptr;
 		}
