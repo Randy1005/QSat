@@ -4,17 +4,24 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cassert>
+#include <string>
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
-#include "logging.h"
-#include "datatypes.h"
-
+#include "logging.hpp"
 
 namespace qsat {
 
 extern cudaDeviceProp dev_prop;
 extern uint32 max_gpu_threads;
-extern size_t max_gpu_sharedMem;
+extern size_t max_gpu_shared_mem;
+
+// global variables
+cudaDeviceProp dev_prop;
+uint32 max_gpu_threads;
+size_t max_gpu_shared_mem;
+
+bool quiet_en = false;
+int verbose = 2;
 
 
 
@@ -24,7 +31,7 @@ __forceinline__ void CUDA_CHECK(cudaError_t returncode)
 	if (returncode != cudaSuccess) {
 		QLOGEN("CUDA runtime failure due to %s", cudaGetErrorString(returncode));
 		cudaDeviceReset();
-		exit(1);
+		std::exit(EXIT_FAILURE);
 	}
 #endif
 }

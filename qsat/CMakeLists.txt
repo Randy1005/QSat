@@ -1,5 +1,6 @@
 add_library(qsat qsat.cpp)
 add_library(control control.cpp)
+add_library(memory memory.cu)
 # specify other sources for the qsat library
 # (if any) with target_sources
 
@@ -15,6 +16,7 @@ find_package(Threads REQUIRED)
 target_link_libraries(qsat PUBLIC Threads::Threads)
 #target_link_libraries(qsat PRIVATE Thrust)
 target_link_libraries(qsat PUBLIC control)
+target_link_libraries(qsat PUBLIC memory)
 target_link_libraries(qsat PRIVATE CUDA::cudart)
 
 

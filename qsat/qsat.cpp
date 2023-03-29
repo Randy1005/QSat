@@ -5,8 +5,8 @@
 
 namespace qsat {
 
+CNFInfo cnf_info;
 
-cudaDeviceProp dev_prop;
 
 
 Literal::Literal(int var) {
@@ -1119,8 +1119,8 @@ void Solver::reset() {
 
 Status Solver::solve() {
 
-  size_t free;
-  // auto ret = get_gpu_info(free);
+  size_t free_mem, penalty;
+  auto ret = get_gpu_info(free_mem, penalty);
 
 
   _model.clear();

@@ -10,6 +10,7 @@ list(APPEND QSAT_UNITTESTS
 	verify_detach_clauses
   verify_signature
   verify_subsume
+  cuda_mem_manager
 )
 
 foreach(unittest IN LISTS QSAT_UNITTESTS)
