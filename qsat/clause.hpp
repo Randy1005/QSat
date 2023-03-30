@@ -42,6 +42,7 @@ struct Literal {
     return id != p.id;
   }
 
+
   int id = -1;
 };
 
@@ -102,6 +103,10 @@ struct Clause {
 
 
   void calc_signature();
+
+  inline bool is_learnt() const {
+    return learnt;
+  }
 
   std::vector<Literal> literals;
 

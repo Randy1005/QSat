@@ -8,7 +8,6 @@ namespace qsat {
 CNFInfo cnf_info;
 
 
-
 Literal::Literal(int var) {
   if (var == 0) {
     throw std::runtime_error("variable cannot be zero");

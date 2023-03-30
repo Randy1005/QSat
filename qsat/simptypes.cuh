@@ -11,7 +11,18 @@
 
 namespace qsat {
 
+
+// -----------------------
+// Global Simplifier Types
+// -----------------------
+
 typedef thrust::device_ptr<uint32_t> t_iptr;
+typedef CuVec<uint32> CuVecU;
+typedef CuVec<Byte> CuVecB;
+typedef CuVec<SRef> CuSRef;
+
+
+
 
 struct CuPool {
 	addr_t mem;
@@ -20,7 +31,7 @@ struct CuPool {
 
 struct CuCNF {
 	uint32* mem;
-	S_Ref size, cap;
+	SRef size, cap;
 };
 
 struct CuLits {
@@ -34,7 +45,7 @@ struct CuLits {
 struct CuHist {
 
 	// NOTE: not sure what this is ...
-	S_Ref* d_segs;
+	SRef* d_segs;
 
 	uint32* d_hist, *h_hist;
 	
@@ -88,16 +99,65 @@ struct CuHist {
 
 };
 
-
+// ---------------------------
+// Simplifier CNF
+// ---------------------------
 class CNF {
 
+public:
+	_QSAT_H_D_ CNF(const SRef& data_cap, const uint32& cs_cap):
+		_bucket((Byte)sizeof(uint32))
+	{
+		assert(_bucket == sizeof(uint32));
+		assert(data_cap);
+		assert(cs_cap);
+		SRef* cs_mem = (SRef*)(this + 1);
+		_refs.alloc(cs_mem, cs_cap);	
+		_data.mem = (uint32*)(cs_mem + cs_cap);
+		_data.cap = data_cap;
+		_data.size = 0;
+	}
 
+	_QSAT_H_D_ SRef* refs_data(const uint32& i = 0) {
+		return _refs + i;
+	}
+
+	_QSAT_H_D_ CuCNF& data() {
+		return _data;
+	}
+	
+	_QSAT_H_D_ uint32 size() {
+		return _refs.size();
+	}
+
+	_QSAT_H_D_ SRef ref(const uint32& i) {
+		assert(i < _refs.size());
+		return _refs[i];
+	}
+
+	_QSAT_H_D_ const SRef& ref(const uint32& i) const {
+		assert(i < _refs.size());
+		return _refs[i];
+	}
+
+	// calculates how many bytes n literals occupy
+	_QSAT_H_D_ size_t calc_bytes(const int& nlits) {
+		return sizeof(SClause) + nlits * sizeof(uint32);
+	}
+
+	// function to construct sclause
+	// from clause on host
+	_QSAT_H_ void new_clause(Clause& src) {
+		assert(src.literals.size() > 1);	
+		size_t c_bytes = calc_bytes(src.literals.size());
+		assert(_data.size < _data.cap);
+	}
 
 
 private:
 	CuCNF _data;
-	
-
+	CuSRef _refs;
+	Byte _bucket;
 
 
 

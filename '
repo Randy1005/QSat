@@ -1,10 +1,11 @@
 #ifndef __SCLAUSE_
 #define __SCLAUSE_
 
-#include "definitions.cuh"
 #include "clause.hpp"
 
 namespace qsat {
+
+
 
 // -------------------------------------
 // Abstract Clause for GPU Inprocessing
@@ -12,7 +13,7 @@ namespace qsat {
 
 class SClause {
 public:
-  // _QSAT_H_D_ SRef		blockSize      () const { assert(_sz); return _sz + (sizeof(*this) / sizeof(uint32)); }
+  _QSAT_H_D_ SREF		blockSize      () const { assert(_sz); return _sz + (sizeof(*this) / sizeof(uint32)); }
   _QSAT_H_D_ size_t		capacity       () const { assert(_sz); return size_t(_sz) * sizeof(uint32) + sizeof(*this); }
   _QSAT_H_D_			SClause        () :
     _st(ORIGINAL)
@@ -146,6 +147,7 @@ private:
   uint32 _sig;
   int _sz;
   uint32 _lits[];
+
 
 };
 

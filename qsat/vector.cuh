@@ -172,8 +172,7 @@ private:
 
 	_QSAT_D_ bool _check_atomic_bound(const uint32 idx, const uint32 cap) {
 		if (idx >= cap) {
-			printf("c ERR: vector atomic returned index [%d] exceeding\ 
-				allocated capacity [%d]\n", idx, cap);
+			printf("c ERR: vector atomic returned index [%d] exceeding allocated capacity [%d]\n", idx, cap);
 			return false;
 		}	
 		return true;

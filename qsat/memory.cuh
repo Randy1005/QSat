@@ -52,9 +52,9 @@ public:
 		
 		// if not enough free memory
 		// skip simplify phase
+		
 		if (used >= _free_mem) {
-			QLOGW("Not enough free memory for %s (curr used = %lld MB) \
-				-> skip GPU simplifier", 
+			QLOGW("Not enough free memory for %s (curr used = %lld MB) -> skip GPU simplifier", 
 				action, used / MBYTE);
 			
 			return false;
@@ -68,6 +68,7 @@ public:
 		assert(_free_mem >= 0);
 		assert(_tot_mem >= _free_mem);
 		assert(_tot_mem >= _cap);
+
 		return true;
 	}
 
@@ -76,15 +77,14 @@ public:
 		const char* action) {
 		// calculate how much memory we need for 
 		// this allocation
-		const int64 used = _cap + min_cap; 
+		const int64 used = _dcap + min_cap; 
 		QLOG2(2, "Allocating GPU device-only memory for %s (used/free = %.3f/%lld MB)", 
 			action, (double)used / MBYTE, _free_mem / MBYTE);
 		
 		// if not enough free memory
 		// skip simplify phase
 		if (used >= _free_mem) {
-			QLOGW("Not enough free memory for %s (curr used = %lld MB) \
-				-> skip GPU simplifier", 
+			QLOGW("Not enough free memory for %s (curr used = %lld MB) -> skip GPU simplifier", 
 				action, used / MBYTE);
 			
 			return false;
@@ -92,12 +92,12 @@ public:
 
 		// if we have enough memory
 		// set mem capacity to current allocation size
-		_cap = used;
+		_dcap = used;
 		_free_mem -= used;
 
 		assert(_free_mem >= 0);
 		assert(_tot_mem >= _free_mem);
-		assert(_tot_mem >= _cap);
+		assert(_tot_mem >= _dcap);
 		return true;
 	}
 
@@ -110,12 +110,13 @@ public:
 	bool alloc_hist(CuHist& cuhist);
 
 	uint32* resize_lits(const size_t& min_lits);
-
+	
+	bool resize_cnf(CNF*&, const size_t&, const size_t&);
 private:
-	CuPool _hist_pool;
+	CuPool _hist_pool, _cnf_pool;
 
 	CuLits _lits_pool;
-
+		
 	// --------------------------
 	// memory statistics trackers:
 	// cap:		unified memory capacity
@@ -125,6 +126,13 @@ private:
 	int64 _free_mem, _tot_mem, _penalty;
 
 
+	// pointer to device cnf
+	uint32* _d_cnf_mem;
+
+	// pointer to sclause refs 
+	SRef* _d_refs_mem;
+
+	bool _is_mem_advise_safe;
 };
 
 

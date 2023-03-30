@@ -49,4 +49,24 @@ TEST_CASE("Resize Device Literals" * doctest::timeout(300)) {
 
 } 
 
+TEST_CASE("Resize Device CNF" * doctest::timeout(300)) {
+  
+  qsat::CuMM cumm;
+  
 
+  size_t free, penalty;
+
+  auto gpu_cnt = qsat::get_gpu_info(free, penalty);
+  REQUIRE(gpu_cnt >= 0);
+
+  // initialize cuda memory manager
+  cumm.init(free, penalty);
+
+  qsat::CNF* cnf;
+  size_t cls_cap = 10000000;
+  size_t lits_cap = 100000;
+  
+    
+  bool succ = cumm.resize_cnf(cnf, cls_cap, lits_cap);
+  REQUIRE(succ);
+} 
