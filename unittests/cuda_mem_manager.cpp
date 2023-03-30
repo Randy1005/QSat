@@ -45,7 +45,8 @@ TEST_CASE("Resize Device Literals" * doctest::timeout(300)) {
 
   // allocate space of 1000 literlas
   auto* lits_pool_mem = cumm.resize_lits(1000);
-  
+  REQUIRE(lits_pool_mem != nullptr);
+
 } 
 
 

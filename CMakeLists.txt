@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.26.0)
 set(CMAKE_CUDA_COMPILER /usr/local/cuda/bin/nvcc)
 
 
-project(QSat VERSION 1.0 LANGUAGES C CXX)
+project(QSat VERSION 1.0 LANGUAGES C CXX CUDA)
 
 
 # set everything up for c++20 features

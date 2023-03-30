@@ -7,6 +7,7 @@
 #include "definitions.hpp"
 #include "sclause.hpp"
 #include "clause.hpp"
+#include "vector.cuh"
 
 namespace qsat {
 

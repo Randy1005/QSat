@@ -26,6 +26,7 @@
 #include "control.hpp"
 #include "memory.cuh"
 
+
 namespace qsat {
 
 class Solver;

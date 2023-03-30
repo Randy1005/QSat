@@ -15,11 +15,16 @@ template<class T>
 _QSAT_D_ T atomic_agg_inc(T* counter) {
 	// get a group of currently coalesced threads
 	auto g = coopg::coalesced_threads();	
+	T warp_res;
+	
+	// leader thread of this group 
+	// performs the addition
+	if (g.thread_rank() == 0) {
+		warp_res = atomicAdd(counter, g.size());
+	}
 
-	printf("coop group size=%lu", g.size());
-
+	return g.shfl(warp_res, 0) + g.thread_rank();
 }	
-
 
 
 

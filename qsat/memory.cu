@@ -44,7 +44,7 @@ uint32* CuMM::resize_lits(const size_t& min_lits) {
 
 
 bool CuMM::alloc_hist(CuHist& cuhist) {
-	assert(cnf_info.n_dual_vars == V2L(cnf_info.maxvar+1ULL));
+	assert(cnf_info.n_dual_vars == V2L(cnf_info.max_var+1ULL));
 	
 
 }
