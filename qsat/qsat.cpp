@@ -1581,14 +1581,10 @@ bool Solver::transpile_task_to_dimacs(const std::string& task_file_name) {
 //}
 
 
-void Solver::init_dev_db_cuda() { 
-
-};
-
-
-void Solver::build_hist_cuda() {
-  
-
+void Solver::awaken() {
+  // approximate the size of new formula
+  size_t num_cls = _clauses.size();
+  size_t num_lits = max_literals();
 }
 
 

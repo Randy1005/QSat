@@ -355,6 +355,7 @@ public:
 	int level(int v) const;
 	int reason(int v) const;
 	
+  size_t max_literals() const;
 	/**
 	 * @ is removed
 	 * returns true if a clause is marked to be 
@@ -472,20 +473,15 @@ public:
    */
   void init_device_db(int cutoff);
 
-
+  
   /**
-   * @brief initialize device database cuda
-   *
-   * 1. device cnf
-   * 2. device occurence table
+   * @brief awaken
+   * initialization for device memory pools
+   * and related data structures
    */
-  void init_dev_db_cuda();
+  void awaken();
 
-  /**
-   * @brief build histogram cuda
-   */
-  void build_hist_cuda();
-
+  
   /**
    * @brief cleanup device memory
    */
@@ -883,6 +879,11 @@ inline bool Solver::is_subset(
 
 
 }
+
+inline size_t Solver::max_literals() const {
+  
+}
+
 
 
 }  // end of namespace --------------------------------------------------------

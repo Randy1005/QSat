@@ -31,10 +31,7 @@ TEST_CASE("Device/Unified Memory Check" * doctest::timeout(300)) {
 }
 
 TEST_CASE("Resize Device Literals" * doctest::timeout(300)) {
-  
   qsat::CuMM cumm;
-  
-
   size_t free, penalty;
 
   auto gpu_cnt = qsat::get_gpu_info(free, penalty);
@@ -43,7 +40,7 @@ TEST_CASE("Resize Device Literals" * doctest::timeout(300)) {
   // initialize cuda memory manager
   cumm.init(free, penalty);
 
-  // allocate space of 1000 literlas
+  // allocate space of 1000 literals
   auto* lits_pool_mem = cumm.resize_lits(1000);
   REQUIRE(lits_pool_mem != nullptr);
 
